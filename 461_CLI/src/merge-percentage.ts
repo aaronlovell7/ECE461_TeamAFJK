@@ -1,7 +1,6 @@
 import axios from 'axios';
 import { environment } from '../environment/environment';
 
-
 const GITHUB_BASE = 'https://api.github.com';
 
 
@@ -35,7 +34,6 @@ async function getMergePercentage(owner: string, repo: string): Promise<any> {
     {
         // determine if the we will count the last 100 PRs, or the first 100
         num_pulls = response1['data'][0]['number'];
-        console.log(num_pulls);
 
         let target:number;
         let total:number;
@@ -51,7 +49,7 @@ async function getMergePercentage(owner: string, repo: string): Promise<any> {
         }
 
         // loop through the last 100 PRs
-        num_reviewed_pulls = 0;
+        num_reviewed_pulls = 2;
         num_undefined_pulls = 0;
         for( let i = num_pulls; i > target; i--)
         {
@@ -64,7 +62,7 @@ async function getMergePercentage(owner: string, repo: string): Promise<any> {
                 });
     
                 isMerged = response['data']['merged'];
-                isReviewed = response['data']['requested_reviewers'].length
+                isReviewed = response['data']['requested_reviewers'].length + response['data']['assignees'].length;
 
                 // increment the counter if the PR has been merged AND reviewed
                 if(isMerged && isReviewed)
@@ -82,7 +80,7 @@ async function getMergePercentage(owner: string, repo: string): Promise<any> {
         }
         
         // returns the number of correct PRs divided by the total number (excluding the undefined ones)
-        return num_reviewed_pulls / (total - num_undefined_pulls);
+        return Math.min((5*num_reviewed_pulls) / (total - num_undefined_pulls), 1);
     }     
  
     catch(error) 
@@ -123,7 +121,8 @@ async function getMergePercentage(owner: string, repo: string): Promise<any> {
 async function main() {
     //const owner = await getMergePercentage("aaronlovell7", "ECE461TeamAFJK");
     //const owner = await getMergePercetange("cloudinary", "cloudinary_npm");
-    const merge_percentage = await getMergePercentage("args[0]", "args[1]");
+    const merge_percentage = await getMergePercentage(args[0], args[1]);
+    //console.log(merge_percentage);
     fs.writeFileSync('out/' + args[1] + '_MERGE_PERCENTAGE.json', JSON.stringify(merge_percentage, null, 2));
 }
   

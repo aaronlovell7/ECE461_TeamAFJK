@@ -190,7 +190,7 @@ def get_scores(args):
     # net score calculation, determined by average of all normalized scores
     net_score = (
         norm_ramp + norm_correct + norm_bf + licensed + norm_maintained + versions + mp
-    ) / 6
+    ) / 7
 
     # array initialization for net and individial scores (normalized, or stated otherwise)
     # return array of values for use in output
