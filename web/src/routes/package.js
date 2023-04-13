@@ -21,6 +21,9 @@ const PackageName = require('../models/packageName')
 const PackageRegEx = require('../models/packageRegEx')
 const PackageMetadata = require('../models/packageMetadata')
 
+// Import child process library. Used for calling our rating script
+const { execFile } = require('node:child_process')
+
 // Here we define the routes for this endpoint
 // Per spec, this POST: Creates package
 //      The req.body will contain PackageData schema
@@ -112,8 +115,19 @@ package_router.post('/', async (req,res) => {
                     }
                 }
             }
-            else { // ingestion
-
+            else { // Ingestion: user provided a URL
+                // check if the input is formatted correctly --> URL is either github or npm
+                url_elements = newPackageData.URL.split('/')
+                if( !(url_elements.include('github.com') || url_elements.include('www.npmjs.com')) )
+                {
+                    res.status(400).json({ message: 'There is missing fields in PackageData or the URL is formed improperly' })
+                }
+                // check if a package with that URL already exists
+                if(await PackageData.findOne({ URL: newPackageDataSchema.URL })) {
+                    res.status(409).json({ message: 'Package exists already.' })
+                }
+                // call the child process using the URL
+                res.status(200).send("reached rating")
             }
         }
         else {
@@ -172,7 +186,21 @@ package_router.delete('/:id', async(req,res) => {
 //          - 404: Package does not exist.
 //          - 500: The package rating system choked on at least one of the metrics.
 package_router.get('/:id/rate', async(req,res) => {
-
+    // if the format of the input is not in PackageID, return a 400 code
+    if( typeof(req.params.id) !== String )
+    {
+        res.status(400).json({ message: 'There is missing field(s) in the PackageID or it is formed improperly'})
+    }
+    // use find by id to find a Metadata schema with PackageID. 404 if it doesn't 
+    const existingPackage = PackageMetadata.findOne({ ID: req.params.id })
+    // Need to be able to go from input: PackageID --> Metadata --> Package = output
+    if( existingPackage == null )
+    {
+        res.status(404).json({ message: 'Package does not exist' })
+    }
+    // if it does exist, call the child to rate the module
+    //const child = execFile('../../../461_CLI/', [url arg])
+    // fail = 500, success = create PackageRating schema, fill it in, return it
 })
 
 // Per spec, this GET: Return the history of this package (all versions).

@@ -1,0 +1,46 @@
+#!/bin/bash
+
+if [ -f "$LOG_FILE" ]; then
+    # LOG_FILE exists
+    echo "LOG_FILE exists" > /dev/null 2>&1
+else
+    # LOG_FILE doesn't exist
+    touch "$LOG_FILE"
+fi
+
+#(curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.35.3/install.sh | bash) > /dev/null 2>&1
+#export NVM_DIR="$HOME/.nvm" > /dev/null 2>&1
+#[ -s "$NVM_DIR/nvm.sh" ] && . "$NVM_DIR/nvm.sh" > /dev/null 2>&1
+# -s "$NVM_DIR/bash_completion" ] && . "$NVM_DIR/bash_completion" > /dev/null 2>&1
+#nvm install v18.14.0 > /dev/null 2>&1
+#nvm use v18.14.0 > /dev/null 2>&1
+#node -v
+
+if [ "$1" == "build" ]; then
+    mkdir out > /dev/null 2>&1
+    tsc src/github-api.ts
+    tsc src/graphql.ts
+    tsc src/npmjs-api.ts
+    tsc src/scorecard.ts
+    tsc src/contributors.ts
+    tsc src/merge-percentage.ts
+    tsc src/Version.ts
+
+elif [ "$1" == "install" ]; then
+    npm install
+
+elif [ "$1" == "test" ]; then
+    npm install
+    ./helper_run build
+    python3 src/CLI.py "./test/sample.txt"
+    pip install pytest-cov
+    python3 -m pytest --cov=test_suite
+    rm -r out/*
+    rm -r src/*.js
+
+else
+    ./helper_run build
+    python3 src/CLI.py "$1"
+    rm -r out/*
+    rm -r src/*.js
+fi

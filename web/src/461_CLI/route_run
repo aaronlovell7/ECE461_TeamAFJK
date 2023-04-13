@@ -1,0 +1,26 @@
+#!/bin/bash
+
+#(curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.35.3/install.sh | bash) > /dev/null 2>&1
+#export NVM_DIR="$HOME/.nvm" > /dev/null 2>&1
+#[ -s "$NVM_DIR/nvm.sh" ] && . "$NVM_DIR/nvm.sh" > /dev/null 2>&1
+# -s "$NVM_DIR/bash_completion" ] && . "$NVM_DIR/bash_completion" > /dev/null 2>&1
+#nvm install v18.14.0 > /dev/null 2>&1
+#nvm use v18.14.0 > /dev/null 2>&1
+#node -v
+
+if [ "$1" == "build" ]; then
+    mkdir out > /dev/null 2>&1
+    tsc 461_CLI/source/github-api.ts
+    tsc 461_CLI/source/graphql.ts
+    tsc 461_CLI/source/npmjs-api.ts
+    tsc 461_CLI/source/scorecard.ts
+    tsc 461_CLI/source/contributors.ts
+    tsc 461_CLI/source/merge-percentage.ts
+    tsc 461_CLI/source/Version.ts
+
+else
+    ./461_CLI/route_run build
+    python3 461_CLI/source/CLI.py "$1"
+    #rm -r 461_CLI/out/*
+    rm -r 461_CLI/source/*.js
+fi
