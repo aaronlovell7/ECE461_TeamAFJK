@@ -34,7 +34,6 @@ elif "www.npmjs.com" in url_elements:
     scores = get_scores(args)
 else:
     print("URL entered is invalid. Try again.")
-    pass
 
 # Creating dictionary with scoring entries for JSON output
 output = dict()

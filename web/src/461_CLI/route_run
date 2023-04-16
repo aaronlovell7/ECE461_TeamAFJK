@@ -21,6 +21,6 @@ if [ "$1" == "build" ]; then
 else
     ./461_CLI/route_run build
     python3 461_CLI/source/CLI.py "$1"
-    #rm -r 461_CLI/out/*
+    rm -r out/*
     rm -r 461_CLI/source/*.js
 fi

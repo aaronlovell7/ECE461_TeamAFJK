@@ -22,7 +22,8 @@ const PackageRegEx = require('../models/packageRegEx')
 const PackageMetadata = require('../models/packageMetadata')
 
 // Import child process library. Used for calling our rating script
-const { execFile } = require('node:child_process')
+const util = require('node:util')
+const execFile = util.promisify(require('node:child_process').execFile);
 
 // Here we define the routes for this endpoint
 // Per spec, this POST: Creates package
@@ -117,17 +118,52 @@ package_router.post('/', async (req,res) => {
             }
             else { // Ingestion: user provided a URL
                 // check if the input is formatted correctly --> URL is either github or npm
-                url_elements = newPackageData.URL.split('/')
-                if( !(url_elements.include('github.com') || url_elements.include('www.npmjs.com')) )
+                url_elements = newPackageDataSchema.URL.split('/')
+                if( !(url_elements.includes('github.com') || url_elements.includes('www.npmjs.com')) )
                 {
                     res.status(400).json({ message: 'There is missing fields in PackageData or the URL is formed improperly' })
                 }
                 // check if a package with that URL already exists
-                if(await PackageData.findOne({ URL: newPackageDataSchema.URL })) {
+                else if(await PackageData.findOne({ URL: newPackageDataSchema.URL })) {
                     res.status(409).json({ message: 'Package exists already.' })
                 }
-                // call the child process using the URL
-                res.status(200).send("reached rating")
+                else{
+                    // call the child process using the URL
+                    let rating_output = ""
+                    async function callRatingCLI()
+                    {
+                        const { stdout } = await execFile('./461_CLI/route_run', [newPackageDataSchema.URL]);
+                        rating_output = JSON.parse(stdout)
+                    }
+                    await callRatingCLI()
+                    console.log(rating_output)
+                    // check if all ratings are above 0.5
+                    if(rating_output['BUS_FACTOR_SCORE'] < 0.5 || rating_output['CORRECTNESS_SCORE'] < 0.5 
+                        || rating_output['CORRECTNESS_SCORE'] < 0.5 || rating_output['RAMP_UP_SCORE'] < 0.5 
+                        || rating_output['RESPONSIVE_MAINTAINER_SCORE'] < 0.5 || rating_output['LICENSE_SCORE'] < 0.5
+                        || rating_output['VERSION_SCORE'] < 0.5 || rating_output['CODE_REVIEWED_PERCENTAGE'] < 0.5 )
+                    {
+                        res.status(424).json({ message: "Package not uploaded due to disqualified rating" })
+                    }
+                    else
+                    {
+                        // create new PackageRating schema
+                        const newPackageRatingSchema = new PackageRating({
+                            NetScore: rating_output['NET_SCORE'],
+                            BusFactor: rating_output['BUS_FACTOR_SCORE'],
+                            Correctness: rating_output['CORRECTNESS_SCORE'],
+                            RampUp: rating_output['RAMP_UP_SCORE'],
+                            ResponsiveMaintainer: rating_output['RESPONSIVE_MAINTAINER_SCORE'],
+                            LicenseScore: rating_output['LICENSE_SCORE'],
+                            GoodPinningPractice: rating_output['VERSION_SCORE'],
+                            PullRequest: rating_output['CODE_REVIEWED_PERCENTAGE']
+                        })
+
+                        await newPackageRatingSchema.save()
+
+                        res.status(201).json(newPackageRatingSchema)
+                    }
+                }
             }
         }
         else {
@@ -192,7 +228,7 @@ package_router.get('/:id/rate', async(req,res) => {
         res.status(400).json({ message: 'There is missing field(s) in the PackageID or it is formed improperly'})
     }
     // use find by id to find a Metadata schema with PackageID. 404 if it doesn't 
-    const existingPackage = PackageMetadata.findOne({ ID: req.params.id })
+    const existingPackage = await PackageMetadata.findOne({ ID: req.params.id })
     // Need to be able to go from input: PackageID --> Metadata --> Package = output
     if( existingPackage == null )
     {

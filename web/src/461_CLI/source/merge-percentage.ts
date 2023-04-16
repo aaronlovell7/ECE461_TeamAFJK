@@ -80,7 +80,7 @@ async function getMergePercentage(owner: string, repo: string): Promise<any> {
         }
         
         // returns the number of correct PRs divided by the total number (excluding the undefined ones)
-        return Math.min((5*num_reviewed_pulls) / (total - num_undefined_pulls), 1);
+        return Math.min((10*num_reviewed_pulls) / (total - num_undefined_pulls), 1);
     }     
  
     catch(error) 
