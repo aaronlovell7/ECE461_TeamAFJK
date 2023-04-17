@@ -3,9 +3,13 @@
     "@types/jest": "^29.4.0",
     "@types/node": "^18.11.19",
     "axios": "^1.2.0-alpha.1",
+    "express": "^4.18.2",
     "glob": "^9.3.2",
     "graphql-request": "^5.1.0",
-    "pytest": "^1.0.0"
+    "jszip": "^3.10.1",
+    "mongoose": "^7.0.3",
+    "pytest": "^1.0.0",
+    "uuid": "^9.0.0"
   },
   "devDependencies": {
     "@babel/core": "^7.20.12",
@@ -13,7 +17,9 @@
     "@babel/preset-typescript": "^7.18.6",
     "@jest/globals": "^29.4.2",
     "babel-jest": "^29.4.2",
+    "dotenv": "^16.0.3",
     "jest-mock-axios": "^4.7.0-beta4",
+    "nodemon": "^2.0.22",
     "ts-jest": "^29.0.5"
   }
 }
