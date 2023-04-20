@@ -1,0 +1,194 @@
+{
+  "date": "2023-04-03",
+  "repo": {
+    "name": "github.com/nullivex/nodist",
+    "commit": "4ee722798d31ba62bb3f6159a15603ef3b31bf26"
+  },
+  "scorecard": {
+    "version": "v4.10.5-27-gb81a70e",
+    "commit": "b81a70e0ea098a7cd6e3672e314cb95b2230e8db"
+  },
+  "score": 4.1,
+  "checks": [
+    {
+      "name": "Maintained",
+      "score": 2,
+      "reason": "2 commit(s) out of 30 and 1 issue activity out of 30 found in the last 90 days -- score normalized to 2",
+      "details": null,
+      "documentation": {
+        "short": "Determines if the project is \"actively maintained\".",
+        "url": "https://github.com/ossf/scorecard/blob/b81a70e0ea098a7cd6e3672e314cb95b2230e8db/docs/checks.md#maintained"
+      }
+    },
+    {
+      "name": "Code-Review",
+      "score": 0,
+      "reason": "found 17 unreviewed human changesets",
+      "details": null,
+      "documentation": {
+        "short": "Determines if the project requires code review before pull requests (aka merge requests) are merged.",
+        "url": "https://github.com/ossf/scorecard/blob/b81a70e0ea098a7cd6e3672e314cb95b2230e8db/docs/checks.md#code-review"
+      }
+    },
+    {
+      "name": "CII-Best-Practices",
+      "score": 0,
+      "reason": "no badge detected",
+      "details": null,
+      "documentation": {
+        "short": "Determines if the project has an OpenSSF (formerly CII) Best Practices Badge.",
+        "url": "https://github.com/ossf/scorecard/blob/b81a70e0ea098a7cd6e3672e314cb95b2230e8db/docs/checks.md#cii-best-practices"
+      }
+    },
+    {
+      "name": "License",
+      "score": 10,
+      "reason": "license file detected",
+      "details": [
+        "Info: License file found in expected location: LICENSE.txt:1",
+        "Info: FSF or OSI recognized license: LICENSE.txt:1"
+      ],
+      "documentation": {
+        "short": "Determines if the project has defined a license.",
+        "url": "https://github.com/ossf/scorecard/blob/b81a70e0ea098a7cd6e3672e314cb95b2230e8db/docs/checks.md#license"
+      }
+    },
+    {
+      "name": "Dangerous-Workflow",
+      "score": 10,
+      "reason": "no dangerous workflow patterns detected",
+      "details": null,
+      "documentation": {
+        "short": "Determines if the project's GitHub Action workflows avoid dangerous patterns.",
+        "url": "https://github.com/ossf/scorecard/blob/b81a70e0ea098a7cd6e3672e314cb95b2230e8db/docs/checks.md#dangerous-workflow"
+      }
+    },
+    {
+      "name": "Packaging",
+      "score": -1,
+      "reason": "no published package detected",
+      "details": [
+        "Warn: no GitHub publishing workflow detected"
+      ],
+      "documentation": {
+        "short": "Determines if the project is published as a package that others can easily download, install, easily update, and uninstall.",
+        "url": "https://github.com/ossf/scorecard/blob/b81a70e0ea098a7cd6e3672e314cb95b2230e8db/docs/checks.md#packaging"
+      }
+    },
+    {
+      "name": "Binary-Artifacts",
+      "score": 10,
+      "reason": "no binaries found in the repo",
+      "details": null,
+      "documentation": {
+        "short": "Determines if the project has generated executable (binary) artifacts in the source repository.",
+        "url": "https://github.com/ossf/scorecard/blob/b81a70e0ea098a7cd6e3672e314cb95b2230e8db/docs/checks.md#binary-artifacts"
+      }
+    },
+    {
+      "name": "Pinned-Dependencies",
+      "score": 10,
+      "reason": "all dependencies are pinned",
+      "details": [
+        "Info: GitHub-owned GitHubActions are pinned",
+        "Info: Third-party GitHubActions are pinned",
+        "Info: Dockerfile dependencies are pinned",
+        "Info: no insecure (not pinned by hash) dependency downloads found in Dockerfiles",
+        "Info: no insecure (not pinned by hash) dependency downloads found in shell scripts"
+      ],
+      "documentation": {
+        "short": "Determines if the project has declared and pinned the dependencies of its build process.",
+        "url": "https://github.com/ossf/scorecard/blob/b81a70e0ea098a7cd6e3672e314cb95b2230e8db/docs/checks.md#pinned-dependencies"
+      }
+    },
+    {
+      "name": "Token-Permissions",
+      "score": 10,
+      "reason": "tokens are read-only in GitHub workflows",
+      "details": [
+        "Info: Medium severity: no workflows found in the repository",
+        "Info: High severity: no workflows found in the repository"
+      ],
+      "documentation": {
+        "short": "Determines if the project's workflows follow the principle of least privilege.",
+        "url": "https://github.com/ossf/scorecard/blob/b81a70e0ea098a7cd6e3672e314cb95b2230e8db/docs/checks.md#token-permissions"
+      }
+    },
+    {
+      "name": "Signed-Releases",
+      "score": 0,
+      "reason": "0 out of 5 artifacts are signed or have provenance",
+      "details": [
+        "Warn: release artifact 0.9.1 does not have provenance: https://api.github.com/repos/nullivex/nodist/releases/16441205",
+        "Warn: release artifact 0.9.1 not signed: https://api.github.com/repos/nullivex/nodist/releases/16441205",
+        "Warn: release artifact 0.9.0 does not have provenance: https://api.github.com/repos/nullivex/nodist/releases/16399676",
+        "Warn: release artifact 0.9.0 not signed: https://api.github.com/repos/nullivex/nodist/releases/16399676",
+        "Warn: release artifact v0.8.8 does not have provenance: https://api.github.com/repos/nullivex/nodist/releases/4945725",
+        "Warn: release artifact v0.8.8 not signed: https://api.github.com/repos/nullivex/nodist/releases/4945725",
+        "Warn: release artifact v0.8.7 does not have provenance: https://api.github.com/repos/nullivex/nodist/releases/4460653",
+        "Warn: release artifact v0.8.7 not signed: https://api.github.com/repos/nullivex/nodist/releases/4460653",
+        "Warn: release artifact v0.8.6 does not have provenance: https://api.github.com/repos/nullivex/nodist/releases/4158815",
+        "Warn: release artifact v0.8.6 not signed: https://api.github.com/repos/nullivex/nodist/releases/4158815"
+      ],
+      "documentation": {
+        "short": "Determines if the project cryptographically signs release artifacts.",
+        "url": "https://github.com/ossf/scorecard/blob/b81a70e0ea098a7cd6e3672e314cb95b2230e8db/docs/checks.md#signed-releases"
+      }
+    },
+    {
+      "name": "Fuzzing",
+      "score": 0,
+      "reason": "project is not fuzzed",
+      "details": null,
+      "documentation": {
+        "short": "Determines if the project uses fuzzing.",
+        "url": "https://github.com/ossf/scorecard/blob/b81a70e0ea098a7cd6e3672e314cb95b2230e8db/docs/checks.md#fuzzing"
+      }
+    },
+    {
+      "name": "Branch-Protection",
+      "score": 0,
+      "reason": "branch protection not enabled on development/release branches",
+      "details": [
+        "Warn: branch protection not enabled for branch 'master'",
+        "Warn: branch protection not enabled for branch 'auto-version-detection'"
+      ],
+      "documentation": {
+        "short": "Determines if the default and release branches are protected with GitHub's branch protection settings.",
+        "url": "https://github.com/ossf/scorecard/blob/b81a70e0ea098a7cd6e3672e314cb95b2230e8db/docs/checks.md#branch-protection"
+      }
+    },
+    {
+      "name": "Security-Policy",
+      "score": 0,
+      "reason": "security policy file not detected",
+      "details": null,
+      "documentation": {
+        "short": "Determines if the project has published a security policy.",
+        "url": "https://github.com/ossf/scorecard/blob/b81a70e0ea098a7cd6e3672e314cb95b2230e8db/docs/checks.md#security-policy"
+      }
+    },
+    {
+      "name": "Vulnerabilities",
+      "score": 0,
+      "reason": "11 existing vulnerabilities detected",
+      "details": [
+        "Warn: Project is vulnerable to: GHSA-v88g-cgmw-v5xw",
+        "Warn: Project is vulnerable to: GHSA-896r-f27r-55mw",
+        "Warn: Project is vulnerable to: GHSA-f8q6-p94x-37v3",
+        "Warn: Project is vulnerable to: GHSA-xvch-5gv4-984h",
+        "Warn: Project is vulnerable to: GHSA-hrpp-h998-j3pp",
+        "Warn: Project is vulnerable to: GHSA-p8p7-x288-28g6",
+        "Warn: Project is vulnerable to: GHSA-3jfq-g458-7qm9",
+        "Warn: Project is vulnerable to: GHSA-r628-mhmh-qjhw",
+        "Warn: Project is vulnerable to: GHSA-9r2w-394v-53qc",
+        "Warn: Project is vulnerable to: GHSA-5955-9wpr-37jh",
+        "Warn: Project is vulnerable to: GHSA-qq89-hq3f-393p"
+      ],
+      "documentation": {
+        "short": "Determines if the project has open, known unfixed vulnerabilities.",
+        "url": "https://github.com/ossf/scorecard/blob/b81a70e0ea098a7cd6e3672e314cb95b2230e8db/docs/checks.md#vulnerabilities"
+      }
+    }
+  ]
+}
