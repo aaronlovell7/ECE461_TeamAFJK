@@ -1,5 +1,0 @@
-{"URL": "https://github.com/cloudinary/cloudinary_npm", "NET_SCORE": "0.7", "RAMP_UP_SCORE": "1.0", "CORRECTNESS_SCORE": "1.0", "BUS_FACTOR_SCORE": "0.8", "RESPONSIVE_MAINTAINER_SCORE": "0.0", "LICENSE_SCORE": 0}
-{"URL": "https://www.npmjs.com/package/express", "NET_SCORE": "0.9", "RAMP_UP_SCORE": "1.0", "CORRECTNESS_SCORE": "1.0", "BUS_FACTOR_SCORE": "0.8", "RESPONSIVE_MAINTAINER_SCORE": "1.0", "LICENSE_SCORE": 0}
-{"URL": "https://github.com/nullivex/nodist", "NET_SCORE": "0.9", "RAMP_UP_SCORE": "0.8", "CORRECTNESS_SCORE": "1.0", "BUS_FACTOR_SCORE": "0.8", "RESPONSIVE_MAINTAINER_SCORE": "1.0", "LICENSE_SCORE": 0}
-{"URL": "https://github.com/lodash/lodash", "NET_SCORE": "0.9", "RAMP_UP_SCORE": "1.0", "CORRECTNESS_SCORE": "1.0", "BUS_FACTOR_SCORE": "0.8", "RESPONSIVE_MAINTAINER_SCORE": "1.0", "LICENSE_SCORE": 0}
-{"URL": "https://www.npmjs.com/package/browserify", "NET_SCORE": "0.9", "RAMP_UP_SCORE": "0.8", "CORRECTNESS_SCORE": "1.0", "BUS_FACTOR_SCORE": "0.8", "RESPONSIVE_MAINTAINER_SCORE": "1.0", "LICENSE_SCORE": 0}
