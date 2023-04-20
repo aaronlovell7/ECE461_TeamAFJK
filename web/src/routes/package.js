@@ -244,8 +244,63 @@ package_router.post('/', async (req,res) => {
 //          - 400: There is missing field(s) in the PackageID/AuthenticationToken or it is formed improperly, or the AuthenticationToken is invalid.
 //          - 404: Package does not exist.
 package_router.get('/:id', async(req,res) => {
+    const curPackage = await Package.findById({ _id: req.params.id})
+    const curPackageData = await PackageData.findById(curPackage.data)
+    const curPackageMetadata = await PackageMetadata.findById(curPackage.metadata)
+    const curPackageName = await PackageName.findById(curPackageMetadata.Name)
+    const curPackageID = await PackageID.findById(curPackageMetadata.ID)
 
+    let isValid = true
+    // try {
+    //     const curPackageName = await PackageName.findById(curPackageMetadata.Name)
+
+    //     //res.json({ metadataID: curPackageMetadata._id, packageData: curPackageData._id, packageName: curPackageName._id })
+
+    // }
+    // catch (err) {
+    //     isValid = false
+    //     res.status(400).json({ message: 'There is missing field(s) in the PackageID/AuthenticationToken or it is formed improperly, or the AuthenticationToken is invalid.'})
+    // }
+
+    try {
+        await curPackageData.validate()
+    }
+    catch (err) {
+        isValid = false
+        res.status(404).json({ message: "Package does not exist." })
+    }
+
+    if (isValid) {
+
+        var returnMetadata = {
+            "Name": curPackageName.PackageName,
+            "Version": curPackageMetadata.Version,
+            "ID": curPackageID.PackageID
+        }
+
+        var returnData = {
+            "Content": curPackageData.Content,
+            "URL": curPackageData.URL,
+            "JSProgram": curPackageData.JSProgram
+        }        
+
+        res.json({ metadata: returnMetadata, data: returnData})
+    }
 })
+
+// TEMPORARY
+
+package_router.get('/', async (req, res) => {
+    try {
+        const packages = await PackageData.find()
+        res.json(packages)
+    }
+    catch (err) {
+        res.status(500)
+    }
+})
+
+// END TEMPORARY
 
 // Per spec, this PUT: Update this content of the package. The name, version, and ID must match. The package contents (from PackageData) will replace the previous contents.
 //      The req.body will contain Package schema
@@ -257,7 +312,55 @@ package_router.get('/:id', async(req,res) => {
 //          - 400: There is missing field(s) in the PackageID/AuthenticationToken or it is formed improperly, or the AuthenticationToken is invalid.
 //          - 404: Package does not exist.
 package_router.put('/:id', async(req,res) => {
+    const curPackage = await Package.findById({ _id: req.params.id})
+    const curPackageData = await PackageData.findById(curPackage.data)
+    const curPackageMetadata = await PackageMetadata.findById(curPackage.metadata)
+    const curPackageName = await PackageName.findById(curPackageMetadata.Name)
+    const curPackageID = await PackageID.findById(curPackageMetadata.ID)
 
+    const newPackageDataSchema = new PackageData(req.body)
+    let isValid = true;
+    try {
+        await newPackageDataSchema.validate()
+    }
+    catch {
+        isValid = false;
+        res.status(400).json({ message: "There is missing field(s) in the PackageID/AuthenticationToken or it is formed improperly, or the AuthenticationToken is invalid." })
+    }
+
+    if(isValid) {
+        // Get name and version from package.json
+        const base64Content = newPackageDataSchema.Content
+        let newName
+        let newVersion
+        let zipError = false
+        try {
+            // Decode content, extract package.json, then extract name and version from it
+            const decodedContent = Buffer.from(base64Content, 'base64')
+            const zip = await JSZip.loadAsync(decodedContent)
+            const packageJSON = await zip.file('package.json').async('string')
+            newName = JSON.parse(packageJSON).name
+            if(!newName) newName = ID
+            newVersion = JSON.parse(packageJSON).version
+            if(!newVersion) newVersion = "1.0.0"
+        }
+        catch {
+            // Per piazza post 196
+            zipError = true;
+            res.status(400).json({ message: 'No package.json in module.'})
+        }
+
+        if (newName == curPackageName.PackageName && newVersion == curPackageMetadata.Version) {
+            // Need to make sure that ID matches as well, not sure how to do this with our current set up
+
+            // Update data in old package with new one
+            const updatedData = await PackageData.findByIdAndUpdate( 
+                { _id: curPackage.data }, 
+                { Content: newPackageDataSchema.Content })
+            
+            res.status(200).json({ message: "Version is updated." })
+        }
+    }
 })
 
 // Per spec, this DELETE: Delete this version of the package.
@@ -269,7 +372,31 @@ package_router.put('/:id', async(req,res) => {
 //          - 400: There is missing field(s) in the PackageID/AuthenticationToken or it is formed improperly, or the AuthenticationToken is invalid.
 //          - 404: Package does not exist.
 package_router.delete('/:id', async(req,res) => {
+    const curPackage = await Package.findById({ _id: req.params.id})
+    const curPackageData = await PackageData.findById(curPackage.data)
+    const curPackageMetadata = await PackageMetadata.findById(curPackage.metadata)
+    const curPackageName = await PackageName.findById(curPackageMetadata.Name)
+    const curPackageID = await PackageID.findById(curPackageMetadata.ID)
 
+    let isValid = true
+    try {
+        await curPackage.validate()
+    }
+    catch (err) {
+        isValid = false
+        res.status(404).json({ message: "Package does not exist." })
+    }
+    if (isValid) {
+        await Promise.all([
+            Package.deleteMany(curPackage._id),
+            PackageData.deleteMany(curPackageData._id),
+            PackageMetadata.deleteMany(curPackageMetadata._id),
+            PackageName.deleteMany(curPackageName._id),
+            PackageID.deleteMany(curPackageID._id)
+        ]);
+
+        res.status(200).json({ message: "Package is deleted." })
+    }
 })
 
 // Per spec, this GET: Rates package
@@ -352,7 +479,7 @@ package_router.get('/:id/rate', async(req,res) => {
 //          - 400: There is missing field(s) in the PackageName/AuthenticationToken or it is formed improperly, or the AuthenticationToken is invalid.
 //          - 404: No such package.
 package_router.get('/byName/:name', async(req,res) => {
-
+    
 })
 
 // Per spec, this DELETE: Delete all versions of this package.
