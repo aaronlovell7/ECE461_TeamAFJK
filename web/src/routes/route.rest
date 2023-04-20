@@ -4,7 +4,7 @@ GET http://localhost:3000/package/byName/skfjv
 GET http://localhost:3000/package/byName/cloudinary
 
 ###
-GET http://localhost:3000/package/byName/
+DELETE http://localhost:3000/package/byName/skfjv
 
 ###
 POST http://localhost:3000/package

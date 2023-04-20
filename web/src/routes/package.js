@@ -268,7 +268,17 @@ package_router.get('/', async (req, res) => {
 //          - 400: There is missing field(s) in the PackageRegEx/AuthenticationToken or it is formed improperly, or the AuthenticationToken is invalid.
 //          - 404: No package found under this regex.
 package_router.post('/byRegEx', async(req,res) => {
-    const newPackageDataSchema = new PackageData(req.body)
+    const newPackageRegEx = new PackageRegEx(req.body)
+    let isValid = true
+    try {
+        await newPackageRegEx.validate()
+    } catch (err){
+        isValid = false
+        res.status(404).json({ message: 'No package found under this regex.' })
+    }
+
+    // confused on how this is a post when the functionality is a get
+
 })
 
 // If functions are needed, name them according to operationId in spec
