@@ -9,8 +9,8 @@ const packages_router = express.Router()
 const PackageMetadata = require('../models/packageMetadata')
 const PackageQuery = require('../models/packageQuery')
 const EnumerateOffset = require('../models/enumerateOffset')
-const Error = require('../models/error')
-const AuthenticationToken = require('../models/authenticationToken')
+//const Error = require('../models/error')
+//const AuthenticationToken = require('../models/authenticationToken')
 
 // Here we define the routes for this endpoint
 // Per the spec, this POST: Gets any packages fitting the query. Search for packages satisfying the indicated query. If you want to enumerate all packages, provide an array 
