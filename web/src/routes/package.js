@@ -3,6 +3,14 @@
 const express = require('express')
 const package_router = express.Router()
 
+// Allow for requests through CORS
+package_router.use(function (req, res, next) {
+    res.header("Access-Control-Allow-Origin", "*");
+    res.header("Access-Control-Allow-Methods", "GET,HEAD,OPTIONS,POST,PUT,DELETE");
+    res.header("Access-Control-Allow-Headers", "Origin, X-Requested-With, Content-Type, Accept, Authorization");
+    next();
+});
+
 // Here we are importing our ID generator
 const { v4: uuidv4 } = require('uuid')
 
@@ -16,7 +24,7 @@ const PackageData = require('../models/packageData')
 const Package = require('../models/package')
 const PackageID = require('../models/packageID')
 const PackageRating = require('../models/packageRating')
-const Error = require('../models/error')
+//const Error = require('../models/error')
 const PackageName = require('../models/packageName')
 const PackageRegEx = require('../models/packageRegEx')
 const PackageMetadata = require('../models/packageMetadata')
@@ -27,7 +35,7 @@ const execFile = util.promisify(require('node:child_process').execFile);
 
 // for Github REST API calls to extract info about modules
 const axios = require('axios')
-const { environment } =  require('../461_CLI/environment/environment');
+//const { environment } =  require('../461_CLI/environment/environment');
 
 // Here we define the routes for this endpoint
 // Per spec, this POST: Creates package
@@ -173,9 +181,9 @@ package_router.post('/', async (req,res) => {
 
                         // Get the package.json using Github REST API and extract name and version from package.json
                         const base64Encoded = await axios.get(`https://api.github.com/repos/${owner}/${repo}/contents/package.json`, {
-                            headers: {
-                                'Authorization': `Token ${environment.GITHUB_TOKEN}`
-                            }
+                            //headers: {
+                            //    'Authorization': `Token ${environment.GITHUB_TOKEN}`
+                            //}
                         });
                         let newName
                         let newVersion
@@ -197,9 +205,9 @@ package_router.post('/', async (req,res) => {
                         if(!zipError) {
                             // Add contents field to PackageData schema
                             const zipFile = await axios.get(`https://api.github.com/repos/${owner}/${repo}/zipball/master`, {
-                                headers: {
-                                    'Authorization': `Token ${environment.GITHUB_TOKEN}`
-                                }
+                                //headers: {
+                                //    'Authorization': `Token ${environment.GITHUB_TOKEN}`
+                                //}
                             })
                             newPackageDataSchema.Content = Buffer.from(zipFile.data, 'base64');
 
@@ -291,13 +299,14 @@ package_router.get('/:id', async(req,res) => {
 // TEMPORARY
 
 package_router.get('/', async (req, res) => {
-    try {
-        const packages = await PackageData.find()
-        res.json(packages)
-    }
-    catch (err) {
-        res.status(500)
-    }
+    res.json({ message: "testing here" })
+    // try {
+    //     const packages = await PackageData.find()
+    //     res.json(packages)
+    // }
+    // catch (err) {
+    //     res.status(500)
+    // }
 })
 
 // END TEMPORARY
