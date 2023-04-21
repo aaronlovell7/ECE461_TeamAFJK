@@ -272,8 +272,6 @@ package_router.get('/:id', async(req,res) => {
         else {
             const curPackageData = await PackageData.findById(curPackage.data)
             const curPackageMetadata = await PackageMetadata.findById(curPackage.metadata)
-            const curPackageName = await PackageName.findById(curPackageMetadata.Name)
-            const curPackageID = await PackageID.findById(curPackageMetadata.ID)
         }
     } catch {
         res.status(500).json({ message: "Unknown error." })
@@ -355,8 +353,6 @@ package_router.put('/:id', async(req,res) => {
         else {
             const curPackageData = await PackageData.findById(curPackage.data)
             const curPackageMetadata = await PackageMetadata.findById(curPackage.metadata)
-            const curPackageName = await PackageName.findById(curPackageMetadata.Name)
-            const curPackageID = await PackageID.findById(curPackageMetadata.ID)
         }
     } catch {
         res.status(500).json({ message: "Unknown error." })
@@ -395,7 +391,7 @@ package_router.put('/:id', async(req,res) => {
                 res.status(400).json({ message: 'No package.json in module.'})
             }
 
-            if (newName == curPackageName.PackageName && newVersion == curPackageMetadata.Version) {
+            if (newName == curPackageMetadata.Name && newVersion == curPackageMetadata.Version) {
                 // Need to make sure that ID matches as well, not sure how to do this with our current set up
 
                 // Update data in old package with new one
@@ -440,8 +436,6 @@ package_router.delete('/:id', async(req,res) => {
         else {
             const curPackageData = await PackageData.findById(curPackage.data)
             const curPackageMetadata = await PackageMetadata.findById(curPackage.metadata)
-            const curPackageName = await PackageName.findById(curPackageMetadata.Name)
-            const curPackageID = await PackageID.findById(curPackageMetadata.ID)
         }
     } catch {
         res.status(500).json({ message: "Unknown error." })
@@ -461,8 +455,6 @@ package_router.delete('/:id', async(req,res) => {
                 Package.deleteMany(curPackage._id),
                 PackageData.deleteMany(curPackageData._id),
                 PackageMetadata.deleteMany(curPackageMetadata._id),
-                PackageName.deleteMany(curPackageName._id),
-                PackageID.deleteMany(curPackageID._id)
             ]);
 
             res.status(200).json({ message: "Package is deleted." })
