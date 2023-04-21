@@ -185,7 +185,7 @@ package_router.post('/', async (req,res) => {
                         });
                         let newName
                         let newVersion
-                        let zipError = false
+                        let packagejsonError = false
                         try {
                             // Decode content, extract package.json, then extract name and version from it
                             const packageJSON = Buffer.from(base64Encoded.data.content, 'base64').toString('utf8');
@@ -196,11 +196,11 @@ package_router.post('/', async (req,res) => {
                         }
                         catch {
                             // Per piazza post 196
-                            zipError = true;
+                            packagejsonError = true;
                             res.status(400).json({ message: 'No package.json in module.'})
                         }
 
-                        if(!zipError) {
+                        if(!packagejsonError) {
                             // Add contents field to PackageData schema
                             const zipFile = await axios.get(`https://api.github.com/repos/${owner}/${repo}/zipball/master`, {
                                 headers: {
@@ -492,60 +492,45 @@ package_router.get('/:id/rate', async(req,res) => {
         // if the format of the input is not in PackageID, return a 400 code
         res.status(400).json({ message: 'There is missing field(s) in the PackageID or it is formed improperly'})
     }
-    if(isValid)
-    {
+
+    try {
         // use find by id to find a Metadata schema with PackageID. 404 if it doesn't 
         const curPackage = await Package.findById({ _id: req.params.id})
-        const curPackageData = await PackageData.findById( curPackage.data )    
-        // Need to be able to go from input: PackageID --> Metadata --> Package = output
-        if( curPackage == null )
+        const curPackageData = await PackageData.findById( curPackage.data )
+    }
+    catch {
+        isValid = false;
+        res.status(404).json({ message: 'Package does not exist' })
+    }
+    
+    if(isValid)
+    {
+        // if it does exist, call the child to rate the module using the URL
+        let rating_output = ""
+        async function callRatingCLI()
         {
-            res.status(404).json({ message: 'Package does not exist' })
+            const { stdout } = await execFile('./461_CLI/route_run', [curPackageData.URL]);
+            rating_output = JSON.parse(stdout)
         }
-        // if it does exist, call the child to rate the module
-        else
-        {
-            // call the child process using the URL
-            let rating_output = ""
-            async function callRatingCLI()
-            {
-                const { stdout } = await execFile('./461_CLI/route_run', [curPackageData.URL]);
-                rating_output = JSON.parse(stdout)
-            }
-            try{ 
-                await callRatingCLI()
+        try{ 
+            await callRatingCLI()
             
-                // create new PackageRating schema
-                const newPackageRatingSchema = new PackageRating({
-                    NetScore: rating_output['NET_SCORE'],
-                    BusFactor: rating_output['BUS_FACTOR_SCORE'],
-                    Correctness: rating_output['CORRECTNESS_SCORE'],
-                    RampUp: rating_output['RAMP_UP_SCORE'],
-                    ResponsiveMaintainer: rating_output['RESPONSIVE_MAINTAINER_SCORE'],
-                    LicenseScore: rating_output['LICENSE_SCORE'],
-                    GoodPinningPractice: rating_output['VERSION_SCORE'],
-                    PullRequest: rating_output['CODE_REVIEWED_PERCENTAGE']
-                })
-
-                await newPackageRatingSchema.save()
-
-                // Create history entry for this upload
-                const defaultUser = await User.findOne({ name: "ece30861defaultadminuser" }).exec()
-
-                const newPackageHistoryEntry = new PackageHistoryEntry ({
-                    User: defaultUser._id,
-                    Date: Date.now(),
-                    PackageMetaData: curPackage.metadata,
-                    Action: 'RATE'
-                })
-
-                await newPackageHistoryEntry.save()
-
-                res.status(200).json(newPackageRatingSchema)
-            } catch {
-                // return 500 status code if calling the rating CLI resulted in any error
-                res.status(500).json({ message: 'The package rating system choked on one of the metrics' })
+            // create new PackageRating schema
+            var newPackageRatingSchema = {
+                "NetScore": rating_output['NET_SCORE'],
+                "BusFactor": rating_output['BUS_FACTOR_SCORE'],
+                "Correctness": rating_output['CORRECTNESS_SCORE'],
+                "RampUp": rating_output['RAMP_UP_SCORE'],
+                "ResponsiveMaintainer": rating_output['RESPONSIVE_MAINTAINER_SCORE'],
+                "LicenseScore": rating_output['LICENSE_SCORE'],
+                "GoodPinningPractice": rating_output['VERSION_SCORE'],
+                "PullRequest": rating_output['CODE_REVIEWED_PERCENTAGE']
             }
+
+            res.status(200).json(newPackageRatingSchema)
+        } catch {
+            // return 500 status code if calling the rating CLI resulted in any error
+            res.status(500).json({ message: 'The package rating system choked on one of the metrics' })
         }
     }
 })
