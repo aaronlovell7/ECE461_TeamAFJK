@@ -59,29 +59,23 @@ package_router.post('/', async (req,res) => {
                     res.status(409).json({ message: 'Package exists already.' })
                 }
                 else {
-                    // Create unique ID and make PackageID schema
-                    let ID = uuidv4();
-                    while(await PackageID.findOne({ PackageID: ID }) != null) {
-                        ID = uuidv4();
-                    }
-                    const newPackageIDSchema = new PackageID({
-                        PackageID: ID
-                    })
-
                     // Get name and version from package.json
                     const base64Content = newPackageDataSchema.Content
                     let newName
                     let newVersion
+                    let newURL
                     let zipError = false
+                    let isName = true
                     try {
                         // Decode content, extract package.json, then extract name and version from it
                         const decodedContent = Buffer.from(base64Content, 'base64')
                         const zip = await JSZip.loadAsync(decodedContent)
                         const packageJSON = await zip.file('package.json').async('string')
                         newName = JSON.parse(packageJSON).name
-                        if(!newName) newName = ID
+                        if(!newName) isName = false
                         newVersion = JSON.parse(packageJSON).version
                         if(!newVersion) newVersion = "1.0.0"
+                        newURL = JSON.parse(packageJSON).homepage
                     }
                     catch {
                         // Per piazza post 196
@@ -90,21 +84,25 @@ package_router.post('/', async (req,res) => {
                     }
 
                     if(!zipError) {
-                        // Create packageName schema
-                        const newPackageNameSchema = new PackageName ({
-                            PackageName: newName
-                        })
-
-                        await newPackageNameSchema.save()
+                        // Add URL for later use if needed
+                        newPackageDataSchema.URL = newURL
                         await newPackageDataSchema.save()
-                        await newPackageIDSchema.save()
 
                         // Create packageMetadata schema
                         const newPackageMetadataSchema = new PackageMetadata ({
-                            Name: newPackageNameSchema._id,
+                            Name: "default",
                             Version: newVersion,
-                            ID: newPackageIDSchema._id
                         })
+
+                        await newPackageMetadataSchema.save()
+
+                        // Set name accordingly 
+                        if(isName) {
+                            newPackageMetadataSchema.Name = newName
+                        } 
+                        else {
+                            newPackageMetadataSchema.Name = _id
+                        }
 
                         await newPackageMetadataSchema.save()
 
