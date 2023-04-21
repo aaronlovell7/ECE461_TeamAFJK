@@ -5,7 +5,7 @@ const mongoose = require('mongoose')
 // Here, we specify what database we want to use. This has no bearing on endpoints. In this case, the database is "packages"
 // Mongoose handles the creation of the db if it does not exist
 // The data will persist in the database even if this server is ever terminated
-mongoose.connect('mongodb://127.0.0.1/packages', { useNewUrlParser: true }) 
+mongoose.connect('mongodb://127.0.0.1/ACME_Module_Registry_Database', { useNewUrlParser: true }) 
 
 // Here we connect to the specified database and log to the user that we did
 const db = mongoose.connection
@@ -28,6 +28,20 @@ app.use('/packages', packagesRouter)
 
 const resetRouter = require('./routes/reset')
 app.use('/reset', resetRouter)
+
+// Create default user
+const User = require('./models/user')
+async function createDefaultUser () {
+    if(!(await User.findOne({ name: "ece30861defaultadminuser" }))) {
+        const newUser = new User ({
+            name: "ece30861defaultadminuser",
+            isAdmin: true
+        })
+
+        await newUser.save()
+    }
+}
+createDefaultUser();
 
 
 // Here we essentially "start" the server by having it listen on the port specified. Here, we use port 3000 which is a port commonly used for development. 
