@@ -10,7 +10,7 @@ def rest_call(args):
     # produces json outputs for rest api given inputted url
     if len(args) != 2:
         return False
-    subprocess.run(["node", "src/github-api.js"] + args)
+    subprocess.run(["node", "461_CLI/source/github-api.js"] + args)
     return
 
 
@@ -18,21 +18,21 @@ def rest_call(args):
 def merge_percentage(args):
     if len(args) != 2:
         return False
-    subprocess.run(["node", "src/merge-percentage.js"] + args)
+    subprocess.run(["node", "461_CLI/source/merge-percentage.js"] + args)
 
     return
 
 
 # calls scorecard function, given args ([owner, repo])
 def scorecard_call(args):
-    subprocess.run(["node", "src/scorecard.js"] + args, stdout=subprocess.PIPE).stdout
+    subprocess.run(["node", "461_CLI/source/scorecard.js"] + args, stdout=subprocess.PIPE).stdout
     return
 
 
 # returns metrics from graphql function, given args ([owner, repo])
 def graphql_metrics(args):
     gql_metrics = str(
-        subprocess.run(["node", "src/graphql.js"] + args, stdout=subprocess.PIPE).stdout
+        subprocess.run(["node", "461_CLI/source/graphql.js"] + args, stdout=subprocess.PIPE).stdout
     )
     gql_metrics = gql_metrics.split(", ")
     # metrics_stripping = gql_metrics.decode().strip()
@@ -115,7 +115,7 @@ def correctness_calc(issues, subs):
 # would correlate to how many are necessary for success in repo
 def bus_factor_calc(args):
     contributors = subprocess.run(
-        ["node", "src/contributors.js"] + args, stdout=subprocess.PIPE
+        ["node", "461_CLI/source/contributors.js"] + args, stdout=subprocess.PIPE
     ).stdout
     contributors = contributors.decode().strip()
     contributors = int(contributors)
@@ -128,7 +128,7 @@ def bus_factor_calc(args):
 # Percentage of pinned to total dependencies
 def version_calc(args):
     versions = subprocess.run(
-        ["node", "src/Version.js"] + args, stdout=subprocess.PIPE
+        ["node", "461_CLI/source/Version.js"] + args, stdout=subprocess.PIPE
     ).stdout
     versions_score = versions.decode().strip()
     versions_score = float(versions_score)
@@ -190,7 +190,7 @@ def get_scores(args):
     # net score calculation, determined by average of all normalized scores
     net_score = (
         norm_ramp + norm_correct + norm_bf + licensed + norm_maintained + versions + mp
-    ) / 6
+    ) / 7
 
     # array initialization for net and individial scores (normalized, or stated otherwise)
     # return array of values for use in output
