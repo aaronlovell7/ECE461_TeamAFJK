@@ -11,9 +11,7 @@ const JSZip = require('jszip')
 //      interface for querying, saving, updating, and deleting documents within the database error
 const PackageData = require('../models/packageData')
 const Package = require('../models/package')
-const PackageID = require('../models/packageID')
 const PackageRating = require('../models/packageRating')
-const PackageName = require('../models/packageName')
 const PackageRegEx = require('../models/packageRegEx')
 const PackageMetadata = require('../models/packageMetadata')
 
