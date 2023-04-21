@@ -519,6 +519,18 @@ package_router.get('/:id/rate', async(req,res) => {
                 "PullRequest": rating_output['CODE_REVIEWED_PERCENTAGE']
             }
 
+            // Create history entry for this upload
+            const defaultUser = await User.findOne({ name: "ece30861defaultadminuser" }).exec()
+
+            const newPackageHistoryEntry = new PackageHistoryEntry ({
+                User: defaultUser._id,
+                Date: Date.now(),
+                PackageMetaData: curPackage.metadata,
+                Action: 'RATE'
+            })
+
+            await newPackageHistoryEntry.save()
+
             res.status(200).json(newPackageRatingSchema)
         } catch {
             // return 500 status code if calling the rating CLI resulted in any error
