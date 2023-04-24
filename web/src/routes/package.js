@@ -20,10 +20,13 @@ const JSZip = require('jszip')
 const PackageData = require('../models/packageData')
 const Package = require('../models/package')
 const PackageRating = require('../models/packageRating')
-const Error = require('../models/error')
+// const Error = require('../models/error')
 const PackageName = require('../models/packageName')
 const PackageRegEx = require('../models/packageRegEx')
 const PackageMetadata = require('../models/packageMetadata')
+const User = require('../models/user')
+const PackageHistoryEntry = require('../models/packageHistoryEntry')
+
 
 // Import child process library. Used for calling our rating script
 const util = require('node:util')
@@ -271,20 +274,21 @@ package_router.post('/', async (req,res) => {
 //          - 404: Package does not exist.
 package_router.get('/:id', async(req,res) => {
     let doesExist = true
+    let curPackageData
+    let curPackageMetadata
     try {
         let curPackage 
-        if((curPackage = await Package.findById({ _id: req.params.id})) == null) {
+        if((curPackage = await Package.findById({ _id: req.params.id })) == null) {
             res.status(404).json({ message: "Package does not exist." })
             doesExist = false
         }
         else {
-            const curPackageData = await PackageData.findById(curPackage.data)
-            const curPackageMetadata = await PackageMetadata.findById(curPackage.metadata)
+            curPackageData = await PackageData.findById({ _id: curPackage.data })
+            curPackageMetadata = await PackageMetadata.findById({ _id: curPackage.metadata })
         }
     } catch {
         res.status(500).json({ message: "Unknown error." })
     }
-
 
     if(doesExist) {
         let isValid = true
@@ -299,9 +303,8 @@ package_router.get('/:id', async(req,res) => {
         if (isValid) {
 
             var returnMetadata = {
-                "Name": curPackageName.PackageName,
+                "Name": curPackageMetadata.Name,
                 "Version": curPackageMetadata.Version,
-                "ID": curPackageID.PackageID
             }
 
             var returnData = {
@@ -330,14 +333,14 @@ package_router.get('/:id', async(req,res) => {
 // TEMPORARY
 
 package_router.get('/', async (req, res) => {
-    res.json({ message: "testing here" })
-    // try {
-    //     const packages = await PackageData.find()
-    //     res.json(packages)
-    // }
-    // catch (err) {
-    //     res.status(500)
-    // }
+    // res.json({ message: "testing here" })
+    try {
+        const packages = await Package.find()
+        res.json(packages)
+    }
+    catch (err) {
+        res.status(500)
+    }
 })
 
 // END TEMPORARY
@@ -353,22 +356,24 @@ package_router.get('/', async (req, res) => {
 //          - 404: Package does not exist.
 package_router.put('/:id', async(req,res) => {
     let doesExist = true
+    let curPackageData
+    let curPackageMetadata 
+    let curPackage 
     try {
-        let curPackage 
-        if((curPackage = await Package.findById({ _id: req.params.id})) == null) {
+        if((curPackage = await Package.findById({ _id: req.params.id })) == null) {
             res.status(404).json({ message: "Package does not exist." })
             doesExist = false
         }
         else {
-            const curPackageData = await PackageData.findById(curPackage.data)
-            const curPackageMetadata = await PackageMetadata.findById(curPackage.metadata)
+            curPackageData = await PackageData.findById(curPackage.data)
+            curPackageMetadata = await PackageMetadata.findById(curPackage.metadata)
         }
     } catch {
         res.status(500).json({ message: "Unknown error." })
     }
 
     if(doesExist) {
-        const newPackageDataSchema = new PackageData(req.body)
+        const newPackageDataSchema = new PackageData(req.body.data)
         let isValid = true;
         try {
             await newPackageDataSchema.validate()
@@ -379,28 +384,8 @@ package_router.put('/:id', async(req,res) => {
         }
 
         if(isValid) {
-            // Get name and version from package.json
-            const base64Content = newPackageDataSchema.Content
-            let newName
-            let newVersion
-            let zipError = false
-            try {
-                // Decode content, extract package.json, then extract name and version from it
-                const decodedContent = Buffer.from(base64Content, 'base64')
-                const zip = await JSZip.loadAsync(decodedContent)
-                const packageJSON = await zip.file('package.json').async('string')
-                newName = JSON.parse(packageJSON).name
-                if(!newName) newName = "default"
-                newVersion = JSON.parse(packageJSON).version
-                if(!newVersion) newVersion = "1.0.0"
-            }
-            catch {
-                // Per piazza post 196
-                zipError = true;
-                res.status(400).json({ message: 'No package.json in module.'})
-            }
 
-            if (newName == curPackageMetadata.Name && newVersion == curPackageMetadata.Version) {
+            if (req.body.metadata.Name == curPackageMetadata.Name && req.body.metadata.Version == curPackageMetadata.Version) {
                 // Need to make sure that ID matches as well, not sure how to do this with our current set up
 
                 // Update data in old package with new one
@@ -436,15 +421,17 @@ package_router.put('/:id', async(req,res) => {
 //          - 404: Package does not exist.
 package_router.delete('/:id', async(req,res) => {
     let doesExist = true
+    let curPackageData
+    let curPackageMetaData
+    let curPackage 
     try {
-        let curPackage 
         if((curPackage = await Package.findById({ _id: req.params.id})) == null) {
             res.status(404).json({ message: "Package does not exist." })
             doesExist = false
         }
         else {
-            const curPackageData = await PackageData.findById(curPackage.data)
-            const curPackageMetadata = await PackageMetadata.findById(curPackage.metadata)
+            curPackageData = await PackageData.findById(curPackage.data)
+            curPackageMetadata = await PackageMetadata.findById(curPackage.metadata)
         }
     } catch {
         res.status(500).json({ message: "Unknown error." })
@@ -457,7 +444,7 @@ package_router.delete('/:id', async(req,res) => {
         }
         catch (err) {
             isValid = false
-            res.status(404).json({ message: "Package does not exist." })
+            res.status(400).json({ message: "There is missing field(s) in the PackageID/AuthenticationToken or it is formed improperly, or the AuthenticationToken is invalid." })
         }
         if (isValid) {
             await Promise.all([
