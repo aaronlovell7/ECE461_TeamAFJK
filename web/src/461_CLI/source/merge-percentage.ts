@@ -1,5 +1,5 @@
 import axios from 'axios';
-import { environment } from '../environment/environment';
+//import { environment } from '../environment/environment';
 
 const GITHUB_BASE = 'https://api.github.com';
 
@@ -19,7 +19,7 @@ async function getMergePercentage(owner: string, repo: string): Promise<any> {
     let num_pulls = 0;
     const response1 = await axios.get(`${GITHUB_BASE}/repos/${owner}/${repo}/pulls`, {
         headers: {
-        Authorization: `Token ${environment.GITHUB_TOKEN}`,
+        Authorization: `Token ${process.env.GITHUB_TOKEN}`,
         },
     });
 
@@ -57,7 +57,7 @@ async function getMergePercentage(owner: string, repo: string): Promise<any> {
             {
                 const response = await axios.get(`${GITHUB_BASE}/repos/${owner}/${repo}/pulls/${i}`, {
                     headers: {
-                    Authorization: `Token ${environment.GITHUB_TOKEN}`
+                    Authorization: `Token ${process.env.GITHUB_TOKEN}`
                     },
                 });
     
@@ -92,7 +92,7 @@ async function getMergePercentage(owner: string, repo: string): Promise<any> {
             {
                 const response = await axios.get(`${GITHUB_BASE}/repos/${owner}/${repo}/pulls/${i}`, {
                     headers: {
-                    Authorization: `Token ${environment.GITHUB_TOKEN}`,
+                    Authorization: `Token ${process.env.GITHUB_TOKEN}`,
                     },
                 });
 

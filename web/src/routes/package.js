@@ -33,7 +33,6 @@ const execFile = util.promisify(require('node:child_process').execFile);
 
 // for Github REST API calls to extract info about modules
 const axios = require('axios')
-const { environment } =  require('../461_CLI/environment/environment');
 
 // Here we define the routes for this endpoint
 // Per spec, this POST: Creates package
@@ -191,9 +190,9 @@ package_router.post('/', async (req,res) => {
 
                         // Get the package.json using Github REST API and extract name and version from package.json
                         const base64Encoded = await axios.get(`https://api.github.com/repos/${owner}/${repo}/contents/package.json`, {
-                            //headers: {
-                            //    'Authorization': `Token ${environment.GITHUB_TOKEN}`
-                            //}
+                            headers: {
+                                'Authorization': `Token ${process.env.GITHUB_TOKEN}`
+                            }
                         });
                         let newName
                         let newVersion
@@ -215,9 +214,9 @@ package_router.post('/', async (req,res) => {
                         if(!packagejsonError) {
                             // Add contents field to PackageData schema
                             const zipFile = await axios.get(`https://api.github.com/repos/${owner}/${repo}/zipball/master`, {
-                                //headers: {
-                                //    'Authorization': `Token ${environment.GITHUB_TOKEN}`
-                                //}
+                                headers: {
+                                    'Authorization': `Token ${process.env.GITHUB_TOKEN}`
+                                }
                             })
                             newPackageDataSchema.Content = Buffer.from(zipFile.data, 'base64');
 
@@ -237,7 +236,7 @@ package_router.post('/', async (req,res) => {
                                 data: newPackageDataSchema._id
                             })
     
-                            const newPackage = await newPackageSchema.save()
+                            let newPackage = await newPackageSchema.save()
 
                             // Create history entry for this upload
                             const defaultUser = await User.findOne({ name: "ece30861defaultadminuser" }).exec()
@@ -280,8 +279,9 @@ package_router.get('/:id', async(req,res) => {
     let curPackageData
     let curPackageMetadata
     try {
+        
         let curPackage 
-        if((curPackage = await Package.findById({ _id: req.params.id })) == null) {
+        if((curPackage = await Package.findById(req.params.id)) == null) {
             res.status(404).json({ message: "Package does not exist." })
             doesExist = false
         }
@@ -289,7 +289,8 @@ package_router.get('/:id', async(req,res) => {
             curPackageData = await PackageData.findById({ _id: curPackage.data })
             curPackageMetadata = await PackageMetadata.findById({ _id: curPackage.metadata })
         }
-    } catch {
+    } catch(err) {
+        console.log(err)
         res.status(500).json({ message: "Unknown error." })
     }
 
