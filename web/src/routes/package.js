@@ -16,7 +16,6 @@ const PackageData = require('../models/packageData')
 const Package = require('../models/package')
 const PackageID = require('../models/packageID')
 const PackageRating = require('../models/packageRating')
-//const Error = require('../models/error')
 const PackageName = require('../models/packageName')
 const PackageRegEx = require('../models/packageRegEx')
 const PackageMetadata = require('../models/packageMetadata')
@@ -113,6 +112,20 @@ package_router.post('/', async (req,res) => {
                         })
 
                         const newPackage = await newPackageSchema.save()
+
+                        // Create history entry for this upload
+                        const defaultUser = await User.findOne({ name: "ece30861defaultadminuser" }).exec()
+
+                        const newPackageHistoryEntry = new PackageHistoryEntry ({
+                            User: defaultUser._id,
+                            Date: Date.now(),
+                            PackageMetaData: newPackageMetadataSchema._id,
+                            Action: 'CREATE'
+                        })
+
+                        await newPackageHistoryEntry.save()
+
+                        newPackage = await Package.findById(newPackage._id).populate('data').populate('metadata')
 
                         res.status(201).json(newPackage)
                     }
@@ -218,6 +231,20 @@ package_router.post('/', async (req,res) => {
                             })
     
                             const newPackage = await newPackageSchema.save()
+
+                            // Create history entry for this upload
+                            const defaultUser = await User.findOne({ name: "ece30861defaultadminuser" }).exec()
+
+                            const newPackageHistoryEntry = new PackageHistoryEntry ({
+                                User: defaultUser._id,
+                                Date: Date.now(),
+                                PackageMetaData: newPackageMetadataSchema._id,
+                                Action: 'CREATE'
+                            })
+
+                            await newPackageHistoryEntry.save()
+
+                            newPackage = await Package.findById(newPackage._id).populate('data').populate('metadata')
     
                             res.status(201).json(newPackage)
                         }
@@ -477,24 +504,33 @@ package_router.get('/:id/rate', async(req,res) => {
 //          - 400: There is missing field(s) in the PackageName/AuthenticationToken or it is formed improperly, or the AuthenticationToken is invalid.
 //          - 404: No such package.
 package_router.get('/byName/:name', async(req,res) => {
-    const Name = await PackageName.findOne({PackageName: req.params.name})
-    let isValid = true
-    // Created test PackageHistoryEntry 
-    const test = {
-        User: '1234',
-        Date: new Date(),
-        PackageMetadata: 'abcd',
-        Action: 'CREATE'
-    }
-    try {
-        await Name.validate()
-    } catch (err){
-        isValid = false
+    let md;
+
+    // Check package exists
+    if(!(md = await PackageMetadata.findOne({ Name: req.params.name }))) {
         res.status(404).json({ message: 'No such package.' })
     }
-    if (isValid){
-        res.json(Name)
-        //res.json(test)
+    else {
+        let isValid = true
+        
+        // Validate package
+        try {
+            await md.validate()
+        } catch {
+            isValid = false
+            res.status(400).json({ message: 'There is missing field(s) in the PackageName or it is formed improperly.' })
+        }
+        if (isValid){
+            let output_array = []
+
+            // Create array of packages matching name
+            try {
+                output_array = await PackageHistoryEntry.find({ PackageMetaData: md._id }).exec()
+                res.status(200).json(output_array)
+            } catch {
+                res.status(500).json({ message: 'Unexpected error.' })
+            }
+        }
     }
 })
 
@@ -507,35 +543,36 @@ package_router.get('/byName/:name', async(req,res) => {
 //          - 400: There is missing field(s) in the PackageName/AuthenticationToken or it is formed improperly, or the AuthenticationToken is invalid.
 //          - 404: Package does not exist.
 package_router.delete('/byName/:name', async(req,res) => {
-    const name = await PackageName.findOne({PackageName: req.params.name})
-    //console.log(Name)
-    let isValid = true
-    try {
-        await name.validate()
-    } catch (err){
-        isValid = false
-        res.status(404).json({ message: 'Package does not exist.' })
+    let md
+
+    // Find package 
+    if(!(md = await PackageMetadata.findOne({ Name: req.params.name }))) {
+        res.status(404).json({ message: 'No such package.' })
     }
-    if (isValid){
-        res.status(200).json({ message: 'Package is deleted.' })
-        const package = await Package.findOne(await PackageMetadata.findOne(await PackageName.findOne({PackageName: req.params.name})))
-        const md = await PackageMetadata.findById(package.metadata)
-        const data = await PackageData.findById(package.data)
-        const id = await PackageID.findById(md.ID)
-        await Promise.all([
-            // Is this all I have to delete 
-            Package.deleteMany(package._id),
-            PackageData.deleteMany(data._id),
-            //PackageHistoryEntry.deleteMany(name._id),
-            PackageID.deleteMany(id._id),
-            PackageMetadata.deleteMany(md._id),
-           // PackageQuery.deleteMany(name._id),
-            //PackageRating.deleteMany(name._id),
-            //SemverRange.deleteMany(name._id),
-            //User.deleteMany(name._id),
-            PackageName.deleteMany(name._id)
-        ]);
-        
+    else {
+        let isValid = true
+
+        // Validate
+        try {
+            await md.validate()
+        } catch {
+            isValid = false
+            res.status(400).json({ message: 'There is missing field(s) in the Name or it is formed improperly.' })
+        }
+        if (isValid){
+            // Find Package and PackageData documents
+            const package = await Package.findOne({ metadata: md._id })
+            const data = await PackageData.findById({ _id: package.data })
+            
+            // Delete related packages
+            await Promise.all([
+                Package.deleteMany(package._id),
+                PackageData.deleteMany(data._id),
+                PackageHistoryEntry.deleteMany({ PackageMetadata: md._id }),
+                PackageMetadata.deleteMany(md._id),
+            ]);
+            res.status(200).json({ message: 'Package is deleted.' })
+        }
     }
 })
 
@@ -558,39 +595,32 @@ package_router.get('/', async (req, res) => {
 //          - 400: There is missing field(s) in the PackageRegEx/AuthenticationToken or it is formed improperly, or the AuthenticationToken is invalid.
 //          - 404: No package found under this regex.
 package_router.post('/byRegEx', async(req,res) => {
-    const newPackageRegEx = new PackageRegEx(req.body)
-    let isValid = true
+    // Load reg ex into schema
+    const newPackageRegEx = await new PackageRegEx(req.body)
+
+    // Validate
     try {
         await newPackageRegEx.validate()
-    } catch (err){
-        isValid = false
-        res.status(404).json({ message: 'No package found under this regex.' })
+    } catch {
+        res.status(400).json({ message: 'There is missing field(s) in the PackageRegEx or it is formed improperly.' })
     }
 
-    // confused on how this is a post when the functionality is a get
+    // Search by reg ex
+    let output_array = []
+    try {
+        output_array = await PackageMetadata.find({ Name: { $regex: newPackageRegEx.PackageRegEx } }).exec()
+    } catch {
+        res.status(500).json({ message: 'Unknown error.' })
+    }
 
+    // Check if nothing was found
+    if(output_array.length == 0) {
+        res.status(404).json({ message: 'No package found under this regex.' })
+    }
+    else {
+        res.status(200).json(output_array)
+    }
 })
-
-// If functions are needed, name them according to operationId in spec
-// If functions needed for:
-//      - Creating package
-//          Name it: PackageCreate
-//      - Retrieving Package
-//          Name it: PackageRetrieve
-//      - Updating package
-//          Name it: PackageUpdate
-//      - Deleting package
-//          Name it: PackageDelete
-//      - Rating Package
-//          Name it: PackageRate
-//      - Getting package by name
-//          Name it: PackageByNameGet
-//      - Deleting package by name
-//          Name it: PackageByNameDelete
-//      - Getting package by RegEx
-//          Name it: PackageByRegExGet
-// Replace these comments related to the function with comment describing function
-
 
 // Export the router as a module so other files can use it
 module.exports = package_router
