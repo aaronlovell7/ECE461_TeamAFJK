@@ -73,22 +73,100 @@
         <div class="box">
             <h1> ACME Corp Module Registry</h1>
             <h2> Upload Packages</h2>
-            <h3> To upload a package, select the file you would like to upload, then click the "Upload File" button. You should see a "Successful Upload." 
+            <h3> To upload a package, either press the Upload File button and select the zip file to upload, or enter the URL for ingestion and press submit. You should see a "Successful Upload." 
                 message if your file was successfully uploaded.</h3>
         </div>
         <div>
-            <form action="" method="post" enctype="multipart/form-data">
-                <label for="file-upload">Select a file to upload:</label>
-                <input type="file" id="file-upload" name="file-upload">
-                <button type="submit">Upload File</button>
-            </form>
+            <!-- Button for uploading zip file -->
+            <button id="uploadButton" type="submit">Upload File</button>
+
+            <!-- Text box to enter URL and submit button -->
+            <form onsubmit="return ingestURL()">
+                <label for="url">Enter URL:</label>
+                <input type="text" id="url" name="url">
+                <br>
+                <input type="submit" value="Submit">
+              </form>
 
             <button onclick="window.location.href='index.html';">
                 Return to Home
             </button>
         </div>
         <script>
-            
+
+            // Set up upload button that upon click gets sent to uploadPackage function
+            const uploadButton = document.getElementById('uploadButton');
+            uploadButton.addEventListener('click', () => {
+            uploadPackage()
+                .then(data => console.log(data))
+                .catch(error => console.error(error));
+            });
+
+            // function that takes in a zip file, base 64 encodes the file, and sends a post request based on the contents of the file
+            async function uploadPackage() {              
+                const inputElement = document.createElement('input');
+                inputElement.type = 'file';
+                inputElement.accept = '.zip';
+                inputElement.click();
+                await new Promise((resolve) => inputElement.addEventListener('change', resolve));
+                const file = inputElement.files[0];
+                if (!file) {
+                    throw new Error('No file selected');
+                }
+                const base64 = await zipFileToBase64(file);
+                const response = await fetch('http://localhost:3000/package', {
+                    method: 'POST',
+                    headers: {
+                                'Content-Type': 'application/json'
+                            },
+                    body:JSON.stringify( {
+                            "Content": base64,
+                            "JSProgram": ""
+                    })
+                });
+                if (!response.ok) {
+                    const error = await response.text();
+                    throw new Error(`Failed to upload package: ${error}`);
+                }
+                const data = await response.json({ message: 'Successful Upload' });
+                return data;
+            }
+
+            // function that takes in the URL entered and sends a post request with the URL 
+            async function ingestURL() {
+                var url = document.getElementById("url").value;
+                const response = await fetch('http://localhost:3000/package', {           
+                    method: 'POST',
+                    headers: {
+                                'Content-Type': 'application/json'
+                            },
+                    body:JSON.stringify( {
+                            "URL": url,
+                            "JSProgram": ""
+                    })
+                });
+                if (!response.ok) {
+                    const error = await response.text();
+                    throw new Error(`Failed to upload package: ${error}`);
+                }
+                const data = await response.json({ message: 'Successful Upload' });
+                return data;
+            }
+
+            // function that takes in a zip file and base64 encodes it
+            function zipFileToBase64(file) {
+                return new Promise((resolve, reject) => {
+                    const reader = new FileReader();
+                    reader.onload = () => {
+                    const base64 = btoa(reader.result);
+                    resolve(base64);
+                    };
+                    reader.onerror = (error) => {
+                    reject(error);
+                    };
+                    reader.readAsBinaryString(file);
+                });
+}
         </script>
     </body>
 </html>

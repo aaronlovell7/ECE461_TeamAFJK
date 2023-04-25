@@ -3,13 +3,8 @@
 const express = require('express')
 const package_router = express.Router()
 
-// Allow for requests through CORS
-package_router.use(function (req, res, next) {
-    res.header("Access-Control-Allow-Origin", "*");
-    res.header("Access-Control-Allow-Methods", "GET,HEAD,OPTIONS,POST,PUT,DELETE");
-    res.header("Access-Control-Allow-Headers", "Origin, X-Requested-With, Content-Type, Accept, Authorization");
-    next();
-});
+// Here we are importing our ID generator
+const { v4: uuidv4 } = require('uuid')
 
 // Here we are importing the node-zip library to use for extracting data from zip files
 const JSZip = require('jszip')
@@ -19,13 +14,11 @@ const JSZip = require('jszip')
 //      interface for querying, saving, updating, and deleting documents within the database error
 const PackageData = require('../models/packageData')
 const Package = require('../models/package')
+const PackageID = require('../models/packageID')
 const PackageRating = require('../models/packageRating')
 const PackageName = require('../models/packageName')
 const PackageRegEx = require('../models/packageRegEx')
 const PackageMetadata = require('../models/packageMetadata')
-const User = require('../models/user')
-const PackageHistoryEntry = require('../models/packageHistoryEntry')
-
 
 // Import child process library. Used for calling our rating script
 const util = require('node:util')
@@ -192,13 +185,13 @@ package_router.post('/', async (req,res) => {
 
                         // Get the package.json using Github REST API and extract name and version from package.json
                         const base64Encoded = await axios.get(`https://api.github.com/repos/${owner}/${repo}/contents/package.json`, {
-                            //headers: {
-                            //    'Authorization': `Token ${environment.GITHUB_TOKEN}`
-                            //}
+                            headers: {
+                                'Authorization': `Token ${environment.GITHUB_TOKEN}`
+                            }
                         });
                         let newName
                         let newVersion
-                        let packagejsonError = false
+                        let zipError = false
                         try {
                             // Decode content, extract package.json, then extract name and version from it
                             const packageJSON = Buffer.from(base64Encoded.data.content, 'base64').toString('utf8');
@@ -209,16 +202,16 @@ package_router.post('/', async (req,res) => {
                         }
                         catch {
                             // Per piazza post 196
-                            packagejsonError = true;
+                            zipError = true;
                             res.status(400).json({ message: 'No package.json in module.'})
                         }
 
-                        if(!packagejsonError) {
+                        if(!zipError) {
                             // Add contents field to PackageData schema
                             const zipFile = await axios.get(`https://api.github.com/repos/${owner}/${repo}/zipball/master`, {
-                                //headers: {
-                                //    'Authorization': `Token ${environment.GITHUB_TOKEN}`
-                                //}
+                                headers: {
+                                    'Authorization': `Token ${environment.GITHUB_TOKEN}`
+                                }
                             })
                             newPackageDataSchema.Content = Buffer.from(zipFile.data, 'base64');
 
@@ -346,9 +339,8 @@ package_router.get('/:id', async(req,res) => {
 // TEMPORARY
 
 package_router.get('/', async (req, res) => {
-    // res.json({ message: "testing here" })
     try {
-        const packages = await Package.find()
+        const packages = await PackageData.find()
         res.json(packages)
     }
     catch (err) {
@@ -507,57 +499,48 @@ package_router.get('/:id/rate', async(req,res) => {
         // if the format of the input is not in PackageID, return a 400 code
         res.status(400).json({ message: 'There is missing field(s) in the PackageID or it is formed improperly'})
     }
-
-    try {
-        // use find by id to find a Metadata schema with PackageID. 404 if it doesn't 
-        const curPackage = await Package.findById({ _id: req.params.id})
-        const curPackageData = await PackageData.findById( curPackage.data )
-    }
-    catch {
-        isValid = false;
-        res.status(404).json({ message: 'Package does not exist' })
-    }
-    
     if(isValid)
     {
-        // if it does exist, call the child to rate the module using the URL
-        let rating_output = ""
-        async function callRatingCLI()
+        // use find by id to find a Metadata schema with PackageID. 404 if it doesn't 
+        const curPackage = await Package.findById({ _id: req.params.id})
+        const curPackageData = await PackageData.findById( curPackage.data )    
+        // Need to be able to go from input: PackageID --> Metadata --> Package = output
+        if( curPackage == null )
         {
-            const { stdout } = await execFile('./461_CLI/route_run', [curPackageData.URL]);
-            rating_output = JSON.parse(stdout)
+            res.status(404).json({ message: 'Package does not exist' })
         }
-        try{ 
-            await callRatingCLI()
-            
-            // create new PackageRating schema
-            var newPackageRatingSchema = {
-                "NetScore": rating_output['NET_SCORE'],
-                "BusFactor": rating_output['BUS_FACTOR_SCORE'],
-                "Correctness": rating_output['CORRECTNESS_SCORE'],
-                "RampUp": rating_output['RAMP_UP_SCORE'],
-                "ResponsiveMaintainer": rating_output['RESPONSIVE_MAINTAINER_SCORE'],
-                "LicenseScore": rating_output['LICENSE_SCORE'],
-                "GoodPinningPractice": rating_output['VERSION_SCORE'],
-                "PullRequest": rating_output['CODE_REVIEWED_PERCENTAGE']
+        // if it does exist, call the child to rate the module
+        else
+        {
+            // call the child process using the URL
+            let rating_output = ""
+            async function callRatingCLI()
+            {
+                const { stdout } = await execFile('./461_CLI/route_run', [curPackageData.URL]);
+                rating_output = JSON.parse(stdout)
             }
+            try{ 
+                await callRatingCLI()
+            
+                // create new PackageRating schema
+                const newPackageRatingSchema = new PackageRating({
+                    NetScore: rating_output['NET_SCORE'],
+                    BusFactor: rating_output['BUS_FACTOR_SCORE'],
+                    Correctness: rating_output['CORRECTNESS_SCORE'],
+                    RampUp: rating_output['RAMP_UP_SCORE'],
+                    ResponsiveMaintainer: rating_output['RESPONSIVE_MAINTAINER_SCORE'],
+                    LicenseScore: rating_output['LICENSE_SCORE'],
+                    GoodPinningPractice: rating_output['VERSION_SCORE'],
+                    PullRequest: rating_output['CODE_REVIEWED_PERCENTAGE']
+                })
 
-            // Create history entry for this upload
-            const defaultUser = await User.findOne({ name: "ece30861defaultadminuser" }).exec()
+                await newPackageRatingSchema.save()
 
-            const newPackageHistoryEntry = new PackageHistoryEntry ({
-                User: defaultUser._id,
-                Date: Date.now(),
-                PackageMetaData: curPackage.metadata,
-                Action: 'RATE'
-            })
-
-            await newPackageHistoryEntry.save()
-
-            res.status(200).json(newPackageRatingSchema)
-        } catch {
-            // return 500 status code if calling the rating CLI resulted in any error
-            res.status(500).json({ message: 'The package rating system choked on one of the metrics' })
+                res.status(200).json(newPackageRatingSchema)
+            } catch {
+                // return 500 status code if calling the rating CLI resulted in any error
+                res.status(500).json({ message: 'The package rating system choked on one of the metrics' })
+            }
         }
     }
 })
@@ -643,6 +626,16 @@ package_router.delete('/byName/:name', async(req,res) => {
             ]);
             res.status(200).json({ message: 'Package is deleted.' })
         }
+    }
+})
+
+package_router.get('/', async (req, res) => {
+    try {
+        const packages = await PackageName.find()
+        res.json(packages)
+    }
+    catch (err) {
+        res.status(500)
     }
 })
 
