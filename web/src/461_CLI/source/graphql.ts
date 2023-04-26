@@ -1,5 +1,5 @@
 import axios from 'axios';
-import { environment } from '../environment/environment';
+//import { environment } from '../environment/environment';
 
 // Gathering command line arguments (owner, repo)
 const args = process.argv.slice(2)
@@ -30,7 +30,7 @@ const query = `
 
 // Adding header to include Github token, stored in environment
 const headers = {
-  Authorization: `Bearer ${environment.GITHUB_BASIC_TOKEN}`,
+  Authorization: `Bearer ${process.env.GITHUB_BASIC_TOKEN}`,
 };
 
 // Sending the query and acquiring the response, isolating forks, subscribers, and issues
