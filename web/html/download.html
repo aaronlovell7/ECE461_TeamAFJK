@@ -108,12 +108,59 @@
                 <option value="saab">Saab</option>
             </select>
 
+            <input id="idInput"></input>
+            
+            <button id="updateButton">Update Data</button>
+
             <button onclick="window.location.href='index.html';">
                 Return to Home
             </button>
         </div>
+
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.6.0/jszip.min.js"></script>
+
         <script>
-            
-        </script>
+            const updateButton = document.getElementById('updateButton');
+
+            updateButton.addEventListener('click', () => {
+            updateData()
+                .then(data => console.log(data))
+                .catch(error => console.error(error));
+            });
+
+            const inputId = document.getElementById('idInput')
+
+            async function updateData() {
+                // console.log(inputId.value)
+
+                // Make a GET request to retrieve the data from MongoDB
+                const response = await fetch('http://localhost:3000/package/' + inputId.value);
+                // console.log(response)
+                const dataString = await response.text();
+
+                const data = JSON.parse(dataString);
+
+                // console.log(data.data.Content)  
+
+                const contentString = data.data.Content;
+                const contentBlob = new Blob([contentString], { type: 'application/zip' });
+
+                var base64str = contentString;
+                var binarystr = atob(base64str);
+                var uint8arr = new Uint8Array(binarystr.length);
+                for (var i = 0; i < binarystr.length; i++) {
+                uint8arr[i] = binarystr.charCodeAt(i);
+                }
+                var blob = new Blob([uint8arr], {type: "application/zip"});
+
+                var link = document.createElement("a");
+                link.href = URL.createObjectURL(blob);
+
+                // Need to add dynamically allocated filename here
+                link.download = "filename.zip";
+                document.body.appendChild(link);
+                link.click();
+            }
+          </script>
     </body>
 </html>
