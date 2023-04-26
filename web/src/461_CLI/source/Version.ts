@@ -1,5 +1,5 @@
 import axios from 'axios';
-import { environment } from '../environment/environment';
+//import { environment } from '../environment/environment';
 
 const args = process.argv.slice(2)
 
@@ -7,7 +7,7 @@ export async function getVersions(owner, repo) {
     // Request package.json using axios
     const response = await axios.get(`https://api.github.com/repos/${owner}/${repo}/contents/package.json`, {
         headers: {
-            'Authorization': `Token ${environment.GITHUB_TOKEN}`
+            'Authorization': `Token ${process.env.GITHUB_TOKEN}`
         }
     });
 

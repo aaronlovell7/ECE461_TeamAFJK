@@ -1,5 +1,5 @@
 import axios from 'axios';
-import { environment } from '../environment/environment';
+//import { environment } from '../environment/environment';
 
 const GITHUB_BASE = 'https://api.github.com';
 
@@ -19,7 +19,7 @@ async function getOwner(owner: string, repo: string): Promise<GitHubUser> {
   try {
     const response = await axios.get(`${GITHUB_BASE}/repos/${owner}/${repo}`, {
       headers: {
-        Authorization: `Token ${environment.GITHUB_TOKEN}`,
+        Authorization: `Token ${process.env.GITHUB_TOKEN}`,
       },
     });
     return response.data;
