@@ -19,6 +19,8 @@ const PackageRating = require('../models/packageRating')
 const PackageName = require('../models/packageName')
 const PackageRegEx = require('../models/packageRegEx')
 const PackageMetadata = require('../models/packageMetadata')
+const User = require('../models/user')
+const PackageHistoryEntry = require('../models/packageHistoryEntry')
 
 // Import child process library. Used for calling our rating script
 const util = require('node:util')
@@ -111,7 +113,7 @@ package_router.post('/', async (req,res) => {
                             data: newPackageDataSchema._id
                         })
 
-                        const newPackage = await newPackageSchema.save()
+                        let newPackage = await newPackageSchema.save()
 
                         // Create history entry for this upload
                         const defaultUser = await User.findOne({ name: "ece30861defaultadminuser" }).exec()
@@ -276,15 +278,15 @@ package_router.get('/:id', async(req,res) => {
 
     if(isValidObjectId(req.params.id)) {
         try {
-            curPackage = await Package.findById(req.params.id)
+            curPackageMetadata = await PackageMetadata.findById(req.params.id)
 
-            if(curPackage == null) {
+            if(curPackageMetadata == null) {
                 res.status(404).json({ message: "Package does not exist." })
                 doesExist = false
             }
             else {
+                curPackage = await Package.findOne({ metadata: curPackageMetadata._id })
                 curPackageData = await PackageData.findById(curPackage.data)
-                curPackageMetadata = await PackageMetadata.findById(curPackage.metadata)
             }
         } catch (err){
             res.status(500).json({ message: "Unknown error." })
@@ -366,13 +368,13 @@ package_router.put('/:id', async(req,res) => {
 
     if(isValidObjectId(req.params.id)) {
         try {
-            if((curPackage = await Package.findById({ _id: req.params.id })) == null) {
+            if((curPackageMetadata = await PackageMetadata.findById({ _id: req.params.id })) == null) {
                 res.status(404).json({ message: "Package does not exist." })
                 doesExist = false
             }
             else {
+                curPackage = await Package.findOne({ metadata: curPackageMetadata._id })
                 curPackageData = await PackageData.findById(curPackage.data)
-                curPackageMetadata = await PackageMetadata.findById(curPackage.metadata)
             }
         } catch {
             res.status(500).json({ message: "Unknown error." })
@@ -433,18 +435,18 @@ package_router.put('/:id', async(req,res) => {
 package_router.delete('/:id', async(req,res) => {
     let doesExist = true
     let curPackageData
-    let curPackageMetaData
+    let curPackageMetadata
     let curPackage 
 
     if(isValidObjectId(req.params.id)) {
         try {
-            if((curPackage = await Package.findById({ _id: req.params.id})) == null) {
+            if((curPackageMetadata = await PackageMetadata.findById({ _id: req.params.id })) == null) {
                 res.status(404).json({ message: "Package does not exist." })
                 doesExist = false
             }
             else {
+                curPackage = await Package.findOne({ metadata: curPackageMetadata._id })
                 curPackageData = await PackageData.findById(curPackage.data)
-                curPackageMetadata = await PackageMetadata.findById(curPackage.metadata)
             }
         } catch {
             res.status(500).json({ message: "Unknown error." })
