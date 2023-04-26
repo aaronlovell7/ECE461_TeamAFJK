@@ -3,13 +3,8 @@
 const express = require('express')
 const package_router = express.Router()
 
-// Allow for requests through CORS
-package_router.use(function (req, res, next) {
-    res.header("Access-Control-Allow-Origin", "*");
-    res.header("Access-Control-Allow-Methods", "GET,HEAD,OPTIONS,POST,PUT,DELETE");
-    res.header("Access-Control-Allow-Headers", "Origin, X-Requested-With, Content-Type, Accept, Authorization");
-    next();
-});
+// Here we are importing our ID generator
+const { v4: uuidv4 } = require('uuid')
 
 // Here we are importing the node-zip library to use for extracting data from zip files
 const JSZip = require('jszip')
@@ -19,14 +14,11 @@ const JSZip = require('jszip')
 //      interface for querying, saving, updating, and deleting documents within the database error
 const PackageData = require('../models/packageData')
 const Package = require('../models/package')
+const PackageID = require('../models/packageID')
 const PackageRating = require('../models/packageRating')
-// const Error = require('../models/error')
 const PackageName = require('../models/packageName')
 const PackageRegEx = require('../models/packageRegEx')
 const PackageMetadata = require('../models/packageMetadata')
-const User = require('../models/user')
-const PackageHistoryEntry = require('../models/packageHistoryEntry')
-
 
 // Import child process library. Used for calling our rating script
 const util = require('node:util')
@@ -34,7 +26,7 @@ const execFile = util.promisify(require('node:child_process').execFile);
 
 // for Github REST API calls to extract info about modules
 const axios = require('axios')
-//const { environment } =  require('../461_CLI/environment/environment');
+const { isValidObjectId } = require('mongoose');
 
 // Here we define the routes for this endpoint
 // Per spec, this POST: Creates package
@@ -133,6 +125,8 @@ package_router.post('/', async (req,res) => {
 
                         await newPackageHistoryEntry.save()
 
+                        newPackage = await Package.findById(newPackage._id).populate('data').populate('metadata')
+
                         res.status(201).json(newPackage)
                     }
                 }
@@ -190,13 +184,13 @@ package_router.post('/', async (req,res) => {
 
                         // Get the package.json using Github REST API and extract name and version from package.json
                         const base64Encoded = await axios.get(`https://api.github.com/repos/${owner}/${repo}/contents/package.json`, {
-                            //headers: {
-                            //    'Authorization': `Token ${environment.GITHUB_TOKEN}`
-                            //}
+                            headers: {
+                                'Authorization': `Token ${process.env.GITHUB_TOKEN}`
+                            }
                         });
                         let newName
                         let newVersion
-                        let packagejsonError = false
+                        let zipError = false
                         try {
                             // Decode content, extract package.json, then extract name and version from it
                             const packageJSON = Buffer.from(base64Encoded.data.content, 'base64').toString('utf8');
@@ -207,16 +201,16 @@ package_router.post('/', async (req,res) => {
                         }
                         catch {
                             // Per piazza post 196
-                            packagejsonError = true;
+                            zipError = true;
                             res.status(400).json({ message: 'No package.json in module.'})
                         }
 
-                        if(!packagejsonError) {
+                        if(!zipError) {
                             // Add contents field to PackageData schema
                             const zipFile = await axios.get(`https://api.github.com/repos/${owner}/${repo}/zipball/master`, {
-                                //headers: {
-                                //    'Authorization': `Token ${environment.GITHUB_TOKEN}`
-                                //}
+                                headers: {
+                                    'Authorization': `Token ${process.env.GITHUB_TOKEN}`
+                                }
                             })
                             newPackageDataSchema.Content = Buffer.from(zipFile.data, 'base64');
 
@@ -236,7 +230,7 @@ package_router.post('/', async (req,res) => {
                                 data: newPackageDataSchema._id
                             })
     
-                            const newPackage = await newPackageSchema.save()
+                            let newPackage = await newPackageSchema.save()
 
                             // Create history entry for this upload
                             const defaultUser = await User.findOne({ name: "ece30861defaultadminuser" }).exec()
@@ -249,6 +243,8 @@ package_router.post('/', async (req,res) => {
                             })
 
                             await newPackageHistoryEntry.save()
+
+                            newPackage = await Package.findById(newPackage._id).populate('data').populate('metadata')
     
                             res.status(201).json(newPackage)
                         }
@@ -276,66 +272,74 @@ package_router.get('/:id', async(req,res) => {
     let doesExist = true
     let curPackageData
     let curPackageMetadata
-    try {
-        let curPackage 
-        if((curPackage = await Package.findById({ _id: req.params.id })) == null) {
-            res.status(404).json({ message: "Package does not exist." })
+    let curPackage 
+
+    if(isValidObjectId(req.params.id)) {
+        try {
+            curPackage = await Package.findById(req.params.id)
+
+            if(curPackage == null) {
+                res.status(404).json({ message: "Package does not exist." })
+                doesExist = false
+            }
+            else {
+                curPackageData = await PackageData.findById(curPackage.data)
+                curPackageMetadata = await PackageMetadata.findById(curPackage.metadata)
+            }
+        } catch (err){
+            res.status(500).json({ message: "Unknown error." })
             doesExist = false
         }
-        else {
-            curPackageData = await PackageData.findById({ _id: curPackage.data })
-            curPackageMetadata = await PackageMetadata.findById({ _id: curPackage.metadata })
-        }
-    } catch {
-        res.status(500).json({ message: "Unknown error." })
-    }
 
-    if(doesExist) {
-        let isValid = true
-        try {
-            await curPackageData.validate()
-        }
-        catch (err) {
-            isValid = false
-            res.status(400).json({ message: "There is missing field(s) in the PackageID or it is formed improperly." })
-        }
-
-        if (isValid) {
-
-            var returnMetadata = {
-                "Name": curPackageMetadata.Name,
-                "Version": curPackageMetadata.Version,
+        if(doesExist) {
+            let isValid = true
+            try {
+                await curPackageData.validate()
+            }
+            catch (err) {
+                isValid = false
+                res.status(400).json({ message: "There is missing field(s) in the PackageID or it is formed improperly." })
             }
 
-            var returnData = {
-                "Content": curPackageData.Content,
-                "URL": curPackageData.URL,
-                "JSProgram": curPackageData.JSProgram
-            }        
+            if (isValid) {
 
-            // Create history entry for this upload
-            const defaultUser = await User.findOne({ name: "ece30861defaultadminuser" }).exec()
+                var returnMetadata = {
+                    "Name": curPackageMetadata.Name,
+                    "Version": curPackageMetadata.Version,
+                }
 
-            const newPackageHistoryEntry = new PackageHistoryEntry ({
-                User: defaultUser._id,
-                Date: Date.now(),
-                PackageMetaData: curPackageMetadata._id,
-                Action: 'DOWNLOAD'
-            })
+                var returnData = {
+                    "Content": curPackageData.Content,
+                    "URL": curPackageData.URL,
+                    "JSProgram": curPackageData.JSProgram
+                }        
 
-            await newPackageHistoryEntry.save()
+                // Create history entry for this upload
+                const defaultUser = await User.findOne({ name: "ece30861defaultadminuser" }).exec()
 
-            res.status(200).json({ metadata: returnMetadata, data: returnData})
+                const newPackageHistoryEntry = new PackageHistoryEntry ({
+                    User: defaultUser._id,
+                    Date: Date.now(),
+                    PackageMetaData: curPackageMetadata._id,
+                    Action: 'DOWNLOAD'
+                })
+
+                await newPackageHistoryEntry.save()
+
+                res.status(200).json({ metadata: returnMetadata, data: returnData})
+            }
         }
+    }
+    else {
+        res.status(400).json({ message: 'There is missing field(s) in the PackageID or it is formed improperly.' })
     }
 })
 
 // TEMPORARY
 
 package_router.get('/', async (req, res) => {
-    // res.json({ message: "testing here" })
     try {
-        const packages = await Package.find()
+        const packages = await PackageData.find()
         res.json(packages)
     }
     catch (err) {
@@ -359,55 +363,62 @@ package_router.put('/:id', async(req,res) => {
     let curPackageData
     let curPackageMetadata 
     let curPackage 
-    try {
-        if((curPackage = await Package.findById({ _id: req.params.id })) == null) {
-            res.status(404).json({ message: "Package does not exist." })
+
+    if(isValidObjectId(req.params.id)) {
+        try {
+            if((curPackage = await Package.findById({ _id: req.params.id })) == null) {
+                res.status(404).json({ message: "Package does not exist." })
+                doesExist = false
+            }
+            else {
+                curPackageData = await PackageData.findById(curPackage.data)
+                curPackageMetadata = await PackageMetadata.findById(curPackage.metadata)
+            }
+        } catch {
+            res.status(500).json({ message: "Unknown error." })
             doesExist = false
         }
-        else {
-            curPackageData = await PackageData.findById(curPackage.data)
-            curPackageMetadata = await PackageMetadata.findById(curPackage.metadata)
-        }
-    } catch {
-        res.status(500).json({ message: "Unknown error." })
-    }
 
-    if(doesExist) {
-        const newPackageDataSchema = new PackageData(req.body.data)
-        let isValid = true;
-        try {
-            await newPackageDataSchema.validate()
-        }
-        catch {
-            isValid = false;
-            res.status(400).json({ message: "There is missing field(s) in the PackageID/AuthenticationToken or it is formed improperly, or the AuthenticationToken is invalid." })
-        }
+        if(doesExist) {
+            const newPackageDataSchema = new PackageData(req.body.data)
+            let isValid = true;
+            try {
+                await newPackageDataSchema.validate()
+            }
+            catch {
+                isValid = false;
+                res.status(400).json({ message: "There is missing field(s) in the PackageID/AuthenticationToken or it is formed improperly, or the AuthenticationToken is invalid." })
+            }
 
-        if(isValid) {
+            if(isValid) {
 
-            if (req.body.metadata.Name == curPackageMetadata.Name && req.body.metadata.Version == curPackageMetadata.Version) {
-                // Need to make sure that ID matches as well, not sure how to do this with our current set up
+                if (req.body.metadata.Name == curPackageMetadata.Name && req.body.metadata.Version == curPackageMetadata.Version) {
+                    // Need to make sure that ID matches as well, not sure how to do this with our current set up
 
-                // Update data in old package with new one
-                const updatedData = await PackageData.findByIdAndUpdate( 
-                    { _id: curPackage.data }, 
-                    { Content: newPackageDataSchema.Content })
+                    // Update data in old package with new one
+                    const updatedData = await PackageData.findByIdAndUpdate( 
+                        { _id: curPackage.data }, 
+                        { Content: newPackageDataSchema.Content })
 
-                // Create history entry for this upload
-                const defaultUser = await User.findOne({ name: "ece30861defaultadminuser" }).exec()
+                    // Create history entry for this upload
+                    const defaultUser = await User.findOne({ name: "ece30861defaultadminuser" }).exec()
 
-                const newPackageHistoryEntry = new PackageHistoryEntry ({
-                    User: defaultUser._id,
-                    Date: Date.now(),
-                    PackageMetaData: curPackageMetadata._id,
-                    Action: 'UPDATE'
-                })
+                    const newPackageHistoryEntry = new PackageHistoryEntry ({
+                        User: defaultUser._id,
+                        Date: Date.now(),
+                        PackageMetaData: curPackageMetadata._id,
+                        Action: 'UPDATE'
+                    })
 
-                await newPackageHistoryEntry.save()
-                
-                res.status(200).json({ message: "Version is updated." })
+                    await newPackageHistoryEntry.save()
+                    
+                    res.status(200).json({ message: "Version is updated." })
+                }
             }
         }
+    }
+    else {
+        res.status(400).json({ message: "There is missing field(s) in the PackageID/AuthenticationToken or it is formed improperly, or the AuthenticationToken is invalid." })
     }
 })
 
@@ -424,37 +435,44 @@ package_router.delete('/:id', async(req,res) => {
     let curPackageData
     let curPackageMetaData
     let curPackage 
-    try {
-        if((curPackage = await Package.findById({ _id: req.params.id})) == null) {
-            res.status(404).json({ message: "Package does not exist." })
+
+    if(isValidObjectId(req.params.id)) {
+        try {
+            if((curPackage = await Package.findById({ _id: req.params.id})) == null) {
+                res.status(404).json({ message: "Package does not exist." })
+                doesExist = false
+            }
+            else {
+                curPackageData = await PackageData.findById(curPackage.data)
+                curPackageMetadata = await PackageMetadata.findById(curPackage.metadata)
+            }
+        } catch {
+            res.status(500).json({ message: "Unknown error." })
             doesExist = false
         }
-        else {
-            curPackageData = await PackageData.findById(curPackage.data)
-            curPackageMetadata = await PackageMetadata.findById(curPackage.metadata)
+
+        if(doesExist) {
+            let isValid = true
+            try {
+                await curPackage.validate()
+            }
+            catch (err) {
+                isValid = false
+                res.status(400).json({ message: "There is missing field(s) in the PackageID/AuthenticationToken or it is formed improperly, or the AuthenticationToken is invalid." })
+            }
+            if (isValid) {
+                await Promise.all([
+                    Package.deleteMany(curPackage._id),
+                    PackageData.deleteMany(curPackageData._id),
+                    PackageMetadata.deleteMany(curPackageMetadata._id),
+                ]);
+
+                res.status(200).json({ message: "Package is deleted." })
+            }
         }
-    } catch {
-        res.status(500).json({ message: "Unknown error." })
     }
-
-    if(doesExist) {
-        let isValid = true
-        try {
-            await curPackage.validate()
-        }
-        catch (err) {
-            isValid = false
-            res.status(400).json({ message: "There is missing field(s) in the PackageID/AuthenticationToken or it is formed improperly, or the AuthenticationToken is invalid." })
-        }
-        if (isValid) {
-            await Promise.all([
-                Package.deleteMany(curPackage._id),
-                PackageData.deleteMany(curPackageData._id),
-                PackageMetadata.deleteMany(curPackageMetadata._id),
-            ]);
-
-            res.status(200).json({ message: "Package is deleted." })
-        }
+    else {
+        res.status(400).json({ message: "There is missing field(s) in the PackageID/AuthenticationToken or it is formed improperly, or the AuthenticationToken is invalid." })
     }
 })
 
@@ -480,57 +498,48 @@ package_router.get('/:id/rate', async(req,res) => {
         // if the format of the input is not in PackageID, return a 400 code
         res.status(400).json({ message: 'There is missing field(s) in the PackageID or it is formed improperly'})
     }
-
-    try {
-        // use find by id to find a Metadata schema with PackageID. 404 if it doesn't 
-        const curPackage = await Package.findById({ _id: req.params.id})
-        const curPackageData = await PackageData.findById( curPackage.data )
-    }
-    catch {
-        isValid = false;
-        res.status(404).json({ message: 'Package does not exist' })
-    }
-    
     if(isValid)
     {
-        // if it does exist, call the child to rate the module using the URL
-        let rating_output = ""
-        async function callRatingCLI()
+        // use find by id to find a Metadata schema with PackageID. 404 if it doesn't 
+        const curPackage = await Package.findById({ _id: req.params.id})
+        const curPackageData = await PackageData.findById( curPackage.data )    
+        // Need to be able to go from input: PackageID --> Metadata --> Package = output
+        if( curPackage == null )
         {
-            const { stdout } = await execFile('./461_CLI/route_run', [curPackageData.URL]);
-            rating_output = JSON.parse(stdout)
+            res.status(404).json({ message: 'Package does not exist' })
         }
-        try{ 
-            await callRatingCLI()
-            
-            // create new PackageRating schema
-            var newPackageRatingSchema = {
-                "NetScore": rating_output['NET_SCORE'],
-                "BusFactor": rating_output['BUS_FACTOR_SCORE'],
-                "Correctness": rating_output['CORRECTNESS_SCORE'],
-                "RampUp": rating_output['RAMP_UP_SCORE'],
-                "ResponsiveMaintainer": rating_output['RESPONSIVE_MAINTAINER_SCORE'],
-                "LicenseScore": rating_output['LICENSE_SCORE'],
-                "GoodPinningPractice": rating_output['VERSION_SCORE'],
-                "PullRequest": rating_output['CODE_REVIEWED_PERCENTAGE']
+        // if it does exist, call the child to rate the module
+        else
+        {
+            // call the child process using the URL
+            let rating_output = ""
+            async function callRatingCLI()
+            {
+                const { stdout } = await execFile('./461_CLI/route_run', [curPackageData.URL]);
+                rating_output = JSON.parse(stdout)
             }
+            try{ 
+                await callRatingCLI()
+            
+                // create new PackageRating schema
+                const newPackageRatingSchema = new PackageRating({
+                    NetScore: rating_output['NET_SCORE'],
+                    BusFactor: rating_output['BUS_FACTOR_SCORE'],
+                    Correctness: rating_output['CORRECTNESS_SCORE'],
+                    RampUp: rating_output['RAMP_UP_SCORE'],
+                    ResponsiveMaintainer: rating_output['RESPONSIVE_MAINTAINER_SCORE'],
+                    LicenseScore: rating_output['LICENSE_SCORE'],
+                    GoodPinningPractice: rating_output['VERSION_SCORE'],
+                    PullRequest: rating_output['CODE_REVIEWED_PERCENTAGE']
+                })
 
-            // Create history entry for this upload
-            const defaultUser = await User.findOne({ name: "ece30861defaultadminuser" }).exec()
+                await newPackageRatingSchema.save()
 
-            const newPackageHistoryEntry = new PackageHistoryEntry ({
-                User: defaultUser._id,
-                Date: Date.now(),
-                PackageMetaData: curPackage.metadata,
-                Action: 'RATE'
-            })
-
-            await newPackageHistoryEntry.save()
-
-            res.status(200).json(newPackageRatingSchema)
-        } catch {
-            // return 500 status code if calling the rating CLI resulted in any error
-            res.status(500).json({ message: 'The package rating system choked on one of the metrics' })
+                res.status(200).json(newPackageRatingSchema)
+            } catch {
+                // return 500 status code if calling the rating CLI resulted in any error
+                res.status(500).json({ message: 'The package rating system choked on one of the metrics' })
+            }
         }
     }
 })
@@ -547,24 +556,33 @@ package_router.get('/:id/rate', async(req,res) => {
 //          - 400: There is missing field(s) in the PackageName/AuthenticationToken or it is formed improperly, or the AuthenticationToken is invalid.
 //          - 404: No such package.
 package_router.get('/byName/:name', async(req,res) => {
-    const Name = await PackageName.findOne({PackageName: req.params.name})
-    let isValid = true
-    // Created test PackageHistoryEntry 
-    const test = {
-        User: '1234',
-        Date: new Date(),
-        PackageMetadata: 'abcd',
-        Action: 'CREATE'
-    }
-    try {
-        await Name.validate()
-    } catch (err){
-        isValid = false
+    let md;
+
+    // Check package exists
+    if(!(md = await PackageMetadata.findOne({ Name: req.params.name }))) {
         res.status(404).json({ message: 'No such package.' })
     }
-    if (isValid){
-        res.json(Name)
-        //res.json(test)
+    else {
+        let isValid = true
+        
+        // Validate package
+        try {
+            await md.validate()
+        } catch {
+            isValid = false
+            res.status(400).json({ message: 'There is missing field(s) in the PackageName or it is formed improperly.' })
+        }
+        if (isValid){
+            let output_array = []
+
+            // Create array of packages matching name
+            try {
+                output_array = await PackageHistoryEntry.find({ PackageMetaData: md._id }).exec()
+                res.status(200).json(output_array)
+            } catch {
+                res.status(500).json({ message: 'Unexpected error.' })
+            }
+        }
     }
 })
 
@@ -577,35 +595,46 @@ package_router.get('/byName/:name', async(req,res) => {
 //          - 400: There is missing field(s) in the PackageName/AuthenticationToken or it is formed improperly, or the AuthenticationToken is invalid.
 //          - 404: Package does not exist.
 package_router.delete('/byName/:name', async(req,res) => {
-    const name = await PackageName.findOne({PackageName: req.params.name})
-    //console.log(Name)
-    let isValid = true
-    try {
-        await name.validate()
-    } catch (err){
-        isValid = false
-        res.status(404).json({ message: 'Package does not exist.' })
+    let md
+
+    // Find package 
+    if(!(md = await PackageMetadata.findOne({ Name: req.params.name }))) {
+        res.status(404).json({ message: 'No such package.' })
     }
-    if (isValid){
-        res.status(200).json({ message: 'Package is deleted.' })
-        const package = await Package.findOne(await PackageMetadata.findOne(await PackageName.findOne({PackageName: req.params.name})))
-        const md = await PackageMetadata.findById(package.metadata)
-        const data = await PackageData.findById(package.data)
-        const id = await PackageID.findById(md.ID)
-        await Promise.all([
-            // Is this all I have to delete 
-            Package.deleteMany(package._id),
-            PackageData.deleteMany(data._id),
-            //PackageHistoryEntry.deleteMany(name._id),
-            PackageID.deleteMany(id._id),
-            PackageMetadata.deleteMany(md._id),
-           // PackageQuery.deleteMany(name._id),
-            //PackageRating.deleteMany(name._id),
-            //SemverRange.deleteMany(name._id),
-            //User.deleteMany(name._id),
-            PackageName.deleteMany(name._id)
-        ]);
-        
+    else {
+        let isValid = true
+
+        // Validate
+        try {
+            await md.validate()
+        } catch {
+            isValid = false
+            res.status(400).json({ message: 'There is missing field(s) in the Name or it is formed improperly.' })
+        }
+        if (isValid){
+            // Find Package and PackageData documents
+            const package = await Package.findOne({ metadata: md._id })
+            const data = await PackageData.findById({ _id: package.data })
+            
+            // Delete related packages
+            await Promise.all([
+                Package.deleteMany(package._id),
+                PackageData.deleteMany(data._id),
+                PackageHistoryEntry.deleteMany({ PackageMetadata: md._id }),
+                PackageMetadata.deleteMany(md._id),
+            ]);
+            res.status(200).json({ message: 'Package is deleted.' })
+        }
+    }
+})
+
+package_router.get('/', async (req, res) => {
+    try {
+        const packages = await PackageName.find()
+        res.json(packages)
+    }
+    catch (err) {
+        res.status(500)
     }
 })
 
@@ -618,29 +647,32 @@ package_router.delete('/byName/:name', async(req,res) => {
 //          - 400: There is missing field(s) in the PackageRegEx/AuthenticationToken or it is formed improperly, or the AuthenticationToken is invalid.
 //          - 404: No package found under this regex.
 package_router.post('/byRegEx', async(req,res) => {
-    const newPackageDataSchema = new PackageData(req.body)
+    // Load reg ex into schema
+    const newPackageRegEx = await new PackageRegEx(req.body)
+
+    // Validate
+    try {
+        await newPackageRegEx.validate()
+    } catch {
+        res.status(400).json({ message: 'There is missing field(s) in the PackageRegEx or it is formed improperly.' })
+    }
+
+    // Search by reg ex
+    let output_array = []
+    try {
+        output_array = await PackageMetadata.find({ Name: { $regex: newPackageRegEx.PackageRegEx } }).exec()
+    } catch {
+        res.status(500).json({ message: 'Unknown error.' })
+    }
+
+    // Check if nothing was found
+    if(output_array.length == 0) {
+        res.status(404).json({ message: 'No package found under this regex.' })
+    }
+    else {
+        res.status(200).json(output_array)
+    }
 })
-
-// If functions are needed, name them according to operationId in spec
-// If functions needed for:
-//      - Creating package
-//          Name it: PackageCreate
-//      - Retrieving Package
-//          Name it: PackageRetrieve
-//      - Updating package
-//          Name it: PackageUpdate
-//      - Deleting package
-//          Name it: PackageDelete
-//      - Rating Package
-//          Name it: PackageRate
-//      - Getting package by name
-//          Name it: PackageByNameGet
-//      - Deleting package by name
-//          Name it: PackageByNameDelete
-//      - Getting package by RegEx
-//          Name it: PackageByRegExGet
-// Replace these comments related to the function with comment describing function
-
 
 // Export the router as a module so other files can use it
 module.exports = package_router
