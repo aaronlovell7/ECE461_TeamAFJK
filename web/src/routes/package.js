@@ -487,29 +487,25 @@ package_router.delete('/:id', async(req,res) => {
 //          - 404: Package does not exist.
 //          - 500: The package rating system choked on at least one of the metrics.
 package_router.get('/:id/rate', async(req,res) => {
-    // This validates that the req.body conforms to the PackageID schema
-    const newPackageIDSchema = new PackageID(req.body)
+    // This validates that the req.body is a valid PackageID/ObjectID type
     let isValid = true
-    try {
-        await newPackageIDSchema.validate()
-    }
-    catch {
-        isValid = false    
-        // if the format of the input is not in PackageID, return a 400 code
-        res.status(400).json({ message: 'There is missing field(s) in the PackageID or it is formed improperly'})
-    }
-    if(isValid)
+    
+    if(isValidObjectId(req.params.id))
     {
-        // use find by id to find a Metadata schema with PackageID. 404 if it doesn't 
-        const curPackage = await Package.findById({ _id: req.params.id})
-        const curPackageData = await PackageData.findById( curPackage.data )    
-        // Need to be able to go from input: PackageID --> Metadata --> Package = output
+        // use find by id to find a Data schema with PackageID. 404 if it doesn't 
+        const curPackage = await Package.findById({ _id: req.params.id})   
+        // Need to be able to go from input: PackageID --> Data --> URL --> Package = output
         if( curPackage == null )
         {
             res.status(404).json({ message: 'Package does not exist' })
+            isValid = false
         }
-        // if it does exist, call the child to rate the module
-        else
+        else 
+        {
+            const curPackageData = await PackageData.findById( curPackage.data ) 
+        }
+        
+        if(isValid)
         {
             // call the child process using the URL
             let rating_output = ""
@@ -541,6 +537,10 @@ package_router.get('/:id/rate', async(req,res) => {
                 res.status(500).json({ message: 'The package rating system choked on one of the metrics' })
             }
         }
+    }
+    else
+    {
+        res.status(400).json({ message: 'There is missing field(s) in the PackageID or it is formed improperly'})
     }
 })
 
