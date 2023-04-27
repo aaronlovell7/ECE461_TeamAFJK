@@ -1,0 +1,266 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css">
+        <title>ECE 461 Team 16</title>
+        <style>
+        h1 {text-align: center;}
+        h2 {text-align: center;}
+        h3 {text-align: center;}
+        h4 {text-align: center;}
+        a {text-align: center;}
+        th {
+            font-size: 24px;
+        }
+        form {text-align:center;}
+        .box {
+            border: 3px solid black;
+            padding: 50px;
+            margin-top: 30px;
+        }
+        button {
+            display: block;
+            margin: auto;
+        }
+        .navbar {
+        overflow: hidden;
+        background-color: #333;
+        font-family: Arial, Helvetica, sans-serif;
+        }
+
+        .navbar a {
+        float: left;
+        font-size: 16px;
+        color: white;
+        text-align: center;
+        padding: 14px 16px;
+        text-decoration: none;
+        }
+
+        .dropdown {
+        float: left;
+        overflow: hidden;
+        }
+
+        .dropdown .dropbtn {
+        cursor: pointer;
+        font-size: 16px;  
+        border: none;
+        outline: none;
+        color: white;
+        padding: 14px 16px;
+        background-color: inherit;
+        font-family: inherit;
+        margin: 0;
+        }
+
+        .navbar a:hover, .dropdown:hover .dropbtn, .dropbtn:focus {
+        background-color: red;
+        }
+
+        .dropdown-content {
+        display: none;
+        position: absolute;
+        background-color: #f9f9f9;
+        min-width: 160px;
+        box-shadow: 0px 8px 16px 0px rgba(0,0,0,0.2);
+        z-index: 1;
+        }
+
+        .dropdown-content a {
+        float: none;
+        color: black;
+        padding: 12px 16px;
+        text-decoration: none;
+        display: block;
+        text-align: left;
+        }
+
+        .dropdown-content a:hover {
+        background-color: #ddd;
+        }
+
+        .show {
+        display: block;
+        }
+        </style>
+    </head>
+    <body  onload="fillOnStart()">
+        <div class="navbar">
+            <a href="index.html">Home</a>
+            <a href="directory.html">Directory</a>
+            <a href="upload.html">Upload</a>
+            <a href="download.html">Download</a>
+            <a href="rate.html">Rate</a>
+            <a href="update.html">Update</a>
+            <a href="search.html">Search</a>
+        </div>
+        <div>
+            <h1> ACME Corp Module Registry</h1>
+            <h2> Created by: Team 16</h2>
+            <div style="display: flex;">
+                <button id="previousPageButton">Previous Page</button>
+                <button id="nextPageButton">Next Page</button>
+            </div>
+            
+            <div class="box">
+                <table id="registry_table" style="margin: auto;">
+                    <thead>
+                        <tr>
+                            <th>Modules</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <!-- Dynamically created in script below -->
+                    </tbody>
+                </table>
+
+                <script>
+                    const previousPageButton = document.getElementById('previousPageButton');
+                    const nextPageButton = document.getElementById('nextPageButton');
+
+                    const table_body = document.querySelector('#registry_table tbody')
+
+                    let offset
+                    let last_offset
+
+                    previousPageButton.addEventListener('click', () => {
+                    previousPage()
+                        .catch(error => console.error(error));
+                    })
+
+                    nextPageButton.addEventListener('click', () => {
+                    nextPage()
+                        .catch(error => console.error(error));
+                    });
+
+                    // Make request to /packages endpoint with * to get all packages
+                    async function fillOnStart() {
+                        offset = 0;
+                        let response = await fetch('http://localhost:3000/packages?offset=0', {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json'
+                            },
+                            body: JSON.stringify(
+                                [
+                                    {
+                                        "Name": "*"
+                                    }
+                                ]
+                            )
+                        })
+
+                        // Get offset for next request out of header if it exists
+                        const offsetHeader = response.headers.get('offset')
+                        if(offsetHeader) {
+                            offset = parseInt(offsetHeader, 10);
+                        }
+
+                        last_offset = 0;
+
+                        response = await response.text() 
+                        response = JSON.parse(response) // Parse response into JSON
+
+                        // Loop through array returned and insert into table
+                        for(let i = 0; i < response.length; i++) {
+                            const row = document.createElement('tr')
+                            row.textContent = response[i].Name
+                            table_body.appendChild(row)
+                        }
+                    }
+
+                    async function nextPage() {
+                        // Clear table for next page
+                        var tbody = document.querySelector('tbody')
+
+                        while(tbody.firstChild) {
+                            tbody.removeChild(tbody.firstChild)
+                        }
+
+                        // Get next page
+                        let response = await fetch('http://localhost:3000/packages?offset=' + offset, {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json'
+                            },
+                            body: JSON.stringify(
+                                [
+                                    {
+                                        "Name": "*"
+                                    }
+                                ]
+                            )
+                        })
+
+                        // Get offset for next request out of header if it exists
+                        const offsetHeader = response.headers.get('offset')
+                        // last_offset = offset
+                        if(offsetHeader) {
+                            last_offset = offset
+                            offset = parseInt(offsetHeader, 10);
+                        }
+
+                        response = await response.text() // Parse response into JSON
+                        response = JSON.parse(response)
+
+                        // Loop through array returned and insert into table
+                        for(let i = 0; i < response.length; i++) {
+                            const row = document.createElement('tr')
+                            row.textContent = response[i].Name
+                            table_body.appendChild(row)
+                        }
+                    }
+
+                    async function previousPage () {
+                        // Clear table for next page
+                        var tbody = document.querySelector('tbody')
+
+                        while(tbody.firstChild) {
+                            tbody.removeChild(tbody.firstChild)
+                        }
+
+                        // Get last offset
+                        offset = last_offset
+                        last_offset -= 1 // change
+                        if(last_offset < 0) {
+                            last_offset = 0
+                        }
+
+                        // Get next page
+                        let response = await fetch('http://localhost:3000/packages?offset=' + offset, {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json'
+                            },
+                            body: JSON.stringify(
+                                [
+                                    {
+                                        "Name": "*"
+                                    }
+                                ]
+                            )
+                        })
+
+                        // Get offset for next request out of header if it exists
+                        const offsetHeader = response.headers.get('offset')
+                        if(offsetHeader) {
+                            offset = parseInt(offsetHeader, 10);
+                        }
+
+                        response = await response.text() // Parse response into JSON
+                        response = JSON.parse(response)
+
+                        // Loop through array returned and insert into table
+                        for(let i = 0; i < response.length; i++) {
+                            const row = document.createElement('tr')
+                            row.textContent = response[i].Name
+                            table_body.appendChild(row)
+                        }
+                    }
+                </script>
+            </div>
+        </div>
+    </body>
+</html>

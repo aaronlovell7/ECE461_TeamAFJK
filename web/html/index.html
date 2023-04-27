@@ -85,35 +85,31 @@
     </head>
     <body>
         <div class="navbar">
-            <a href="index.html">Home</a>
-            <a href="upload.html">Upload</a>
-            <a href="download.html">Download</a>
-            <a href="rate.html">Rate</a>
-            <a href="update.html">Update</a>
+          <a href="index.html">Home</a>
+          <a href="directory.html">Directory</a>
+          <a href="upload.html">Upload</a>
+          <a href="download.html">Download</a>
+          <a href="rate.html">Rate</a>
+          <a href="update.html">Update</a>
+          <a href="search.html">Search</a>
         </div>
         <div>
             <h1> ACME Corp Module Registry</h1>
             <h2> Created by: Team 16</h2>
-            <!-- <button onclick="window.location.href='download.html';">
-                Download
-              </button>
-            <marquee>Now on persistent disk!</marquee>
-            <marquee>Testing VS Code connection</marquee>
-            <form method="post" enctype="multipart/form-data" action="">
-                <input type="file" name="fileToUpload" id="file-to-upload">
-                <input type="submit" value="Upload File" name="submit">
-            </form> -->
-
+           
             <div class="box">
               <h2> Welcome to the ACME Corp Module Registry!</h2>
               <h3> Please use the navbar located at the top of the screen to navigate the registry.</h3>
               <h3> Team Members:</h3>
               <h4> Aaron Lovell</h4>
               <h4> Fred Kepler</h4>
-              <h4> Jack Stavrokos</h4>
+              <h4> Jack Stavrakos</h4>
               <h4> Kevin Hasier</h4>
             </div>
         </div>
+
+        <button id="resetButton">Reset Registry</button>
+
         <script>
             /* When the user clicks on the button, 
             toggle between hiding and showing the dropdown content */
@@ -129,6 +125,27 @@
                   myDropdown.classList.remove('show');
                 }
               }
+            }
+
+            // Reset button
+            const resetButton= document.getElementById('resetButton');
+
+            resetButton.addEventListener('click', () => {
+            resetRegistry()
+                .then(data => console.log(data))
+                .catch(error => console.error(  error));
+            });
+
+            async function resetRegistry() {
+              const response = await fetch('http://localhost:3000/reset', {
+                method: 'DELETE',
+                headers: {
+                            'Content-Type': 'application/json'
+                        }
+              });
+              const dataString = await response.text();
+
+              const data = JSON.parse(dataString);
             }
             </script>
     </body>

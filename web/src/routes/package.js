@@ -3,20 +3,23 @@
 const express = require('express')
 const package_router = express.Router()
 
-// Here we are importing our ID generator
-const { v4: uuidv4 } = require('uuid')
-
 // Here we are importing the node-zip library to use for extracting data from zip files
 const JSZip = require('jszip')
+
+// Allow for requests through CORS
+package_router.use(function (req, res, next) {
+    res.header("Access-Control-Allow-Origin", "*");
+    res.header("Access-Control-Allow-Methods", "GET,HEAD,OPTIONS,POST,PUT,DELETE");
+    res.header("Access-Control-Allow-Headers", "Origin, X-Requested-With, Content-Type, Accept, Authorization");
+    next();
+});
 
 // Here we are importing the needed models for this endpoint
 // Models represent collections in the database. They define the structure of the documents in the collection and provide an 
 //      interface for querying, saving, updating, and deleting documents within the database error
 const PackageData = require('../models/packageData')
 const Package = require('../models/package')
-const PackageID = require('../models/packageID')
 const PackageRating = require('../models/packageRating')
-const PackageName = require('../models/packageName')
 const PackageRegEx = require('../models/packageRegEx')
 const PackageMetadata = require('../models/packageMetadata')
 const User = require('../models/user')

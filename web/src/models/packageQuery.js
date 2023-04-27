@@ -1,16 +1,16 @@
 const mongoose = require('mongoose')
-const semverRange = require('./semverRange')
-const packageName = require('./packageName')
 
 const packageQuerySchema = new mongoose.Schema({
     Version: {
-        ref: 'SemverRange',
-        type: mongoose.Schema.Types.ObjectId,
-        description: ""
+        type: String,
+        description: "",
+        example: "Exact (1.2.3)\
+                \ Bounded range (1.2.3-2.1.0)\
+                \ Carat (^1.2.3)\
+                \ Tilde (~1.2.0)"
     },
     Name: {
-        ref: 'PackageName',
-        type: mongoose.Schema.Types.ObjectId,
+        type: String,
         description: "",
         required: true
     }
