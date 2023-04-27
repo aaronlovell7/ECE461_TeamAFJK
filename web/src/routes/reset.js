@@ -3,6 +3,14 @@
 const express = require('express')
 const reset_router = express.Router()
 
+// Allow for requests through CORS
+reset_router.use(function (req, res, next) {
+    res.header("Access-Control-Allow-Origin", "*");
+    res.header("Access-Control-Allow-Methods", "GET,HEAD,OPTIONS,POST,PUT,DELETE");
+    res.header("Access-Control-Allow-Headers", "Origin, X-Requested-With, Content-Type, Accept, Authorization");
+    next();
+});
+
 // Here we are importing the needed models for this endpoint
 // Models represent collections in the database. They define the structure of the documents in the collection and provide an 
 //      interface for querying, saving, updating, and deleting documents within the database error
