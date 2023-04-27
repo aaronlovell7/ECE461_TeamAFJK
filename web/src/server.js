@@ -1,6 +1,7 @@
 const express = require('express')
 const app = express()
 const mongoose = require('mongoose')
+require('dotenv').config()
 
 // Here, we specify what database we want to use. This has no bearing on endpoints. In this case, the database is "packages"
 // Mongoose handles the creation of the db if it does not exist
