@@ -137,7 +137,7 @@
             });
 
             async function resetRegistry() {
-              const response = await fetch('http://localhost:3000/reset', {
+              const response = await fetch(`http://${process.env.SERVER_STATIC_IP}:3000/reset`, {
                 method: 'DELETE',
                 headers: {
                             'Content-Type': 'application/json'

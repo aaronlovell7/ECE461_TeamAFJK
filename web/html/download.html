@@ -136,7 +136,7 @@
                 // console.log(inputId.value)
 
                 // Make a GET request to retrieve the data from MongoDB
-                const response = await fetch('http://localhost:3000/package/' + inputId.value);
+                const response = await fetch(`http://${process.env.SERVER_STATIC_IP}:3000/package/` + inputId.value);
                 // console.log(response)
                 const dataString = await response.text();
 
