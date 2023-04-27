@@ -116,7 +116,7 @@
                     throw new Error('No file selected');
                 }
                 const base64 = await zipFileToBase64(file);
-                const response = await fetch(`http://${process.env.SERVER_STATIC_IP}:3000/package`, {
+                const response = await fetch(`http://35.209.117.6:3000/package`, {
                     method: 'POST',
                     headers: {
                                 'Content-Type': 'application/json'
@@ -137,7 +137,7 @@
             // function that takes in the URL entered and sends a post request with the URL 
             async function ingestURL() {
                 var url = document.getElementById("url").value;
-                const response = await fetch(`http://${process.env.SERVER_STATIC_IP}:3000/package`, {           
+                const response = await fetch(`http://35.209.117.6:3000/package`, {           
                     method: 'POST',
                     headers: {
                                 'Content-Type': 'application/json'
