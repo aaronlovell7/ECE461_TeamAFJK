@@ -1,6 +1,4 @@
 const mongoose = require('mongoose')
-const packageName = require('./packageName')
-const packageID = require('./packageID')
 
 const packageMetadataSchema = new mongoose.Schema({
     Name: {
