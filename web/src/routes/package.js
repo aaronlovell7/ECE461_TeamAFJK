@@ -549,6 +549,8 @@ package_router.get('/:id/rate', async(req,res) => {
         // use find by id to find a Data schema with PackageID. 404 if it doesn't 
         const curPackageMetadata = await PackageMetadata.findById({ _id: req.params.id})   
         // Need to be able to go from input: PackageID --> Data --> URL --> Package = output
+        let curPackage
+        let curPackageData
         if( curPackageMetadata == null )
         {
             res.status(404).json({ message: 'Package does not exist' })
@@ -556,8 +558,8 @@ package_router.get('/:id/rate', async(req,res) => {
         }
         else 
         {
-            const curPackage = await Package.findOne({ metadata: curPackageMetadata._id })
-            const curPackageData = await PackageData.findById( curPackage.data ) 
+            curPackage = await Package.findOne({ metadata: curPackageMetadata._id })
+            curPackageData = await PackageData.findById( curPackage.data ) 
         }
         
         if(isValid)
