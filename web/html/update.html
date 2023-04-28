@@ -135,7 +135,13 @@
                 response1 = await response1.text() 
                 response1 = JSON.parse(response1)
 
-                var id = response1[0]._id
+                try {
+                    var id = response1[0]._id
+                }
+                catch {
+                    alert("Package not found")
+                    return
+                }
 
                 // Old upload code to accept zip file upon upload
                 const inputElement = document.createElement('input');
