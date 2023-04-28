@@ -154,7 +154,9 @@
                 var id = response1[0]._id
 
                 // Make a GET request to retrieve the data from MongoDB
+
                 const response = await fetch(`http://35.209.117.6:3000/package/` + id);
+
                 // console.log(response)
                 const dataString = await response.text();
 

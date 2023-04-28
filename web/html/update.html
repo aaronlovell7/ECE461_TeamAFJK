@@ -135,7 +135,6 @@
                 response1 = await response1.text() 
                 response1 = JSON.parse(response1)
 
-
                 try {
                     var id = response1[0]._id
                 }
@@ -143,7 +142,6 @@
                     alert("Package not found")
                     return
                 }
-
 
                 // Old upload code to accept zip file upon upload
                 const inputElement = document.createElement('input');

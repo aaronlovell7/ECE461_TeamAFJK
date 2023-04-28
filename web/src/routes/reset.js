@@ -3,18 +3,22 @@
 const express = require('express')
 const reset_router = express.Router()
 
+// Allow for requests through CORS
+reset_router.use(function (req, res, next) {
+    res.header("Access-Control-Allow-Origin", "*");
+    res.header("Access-Control-Allow-Methods", "GET,HEAD,OPTIONS,POST,PUT,DELETE");
+    res.header("Access-Control-Allow-Headers", "Origin, X-Requested-With, Content-Type, Accept, Authorization");
+    next();
+});
+
 // Here we are importing the needed models for this endpoint
 // Models represent collections in the database. They define the structure of the documents in the collection and provide an 
 //      interface for querying, saving, updating, and deleting documents within the database error
 const Package               = require('../models/package')
 const PackageData           = require('../models/packageData')
 const PackageHistoryEntry   = require('../models/packageHistoryEntry')
-const PackageID             = require('../models/packageID')
 const PackageMetadata       = require('../models/packageMetadata')
-const PackageName           = require('../models/packageName')
-const PackageQuery          = require('../models/packageQuery')
 const PackageRating         = require('../models/packageRating')
-const SemverRange           = require('../models/semverRange')
 const User                  = require('../models/user')
 
 // Here we define the routes for this endpoint
@@ -25,18 +29,24 @@ const User                  = require('../models/user')
 //          - 401: You do not have permission to reset the registry.
 // We are not supporting authentication so codes 400 & 401 do not take effect here
 reset_router.delete('/', async (req,res) => {
+    // Cleanse database of everything that could be possibly saved
     await Promise.all([
         Package.deleteMany({}),
         PackageData.deleteMany({}),
         PackageHistoryEntry.deleteMany({}),
-        PackageID.deleteMany({}),
         PackageMetadata.deleteMany({}),
-        PackageName.deleteMany({}),
-        PackageQuery.deleteMany({}),
         PackageRating.deleteMany({}),
-        SemverRange.deleteMany({}),
         User.deleteMany({})
     ]);
+
+    // Create default user
+    const newUser = new User ({
+        name: "ece30861defaultadminuser",
+        isAdmin: true
+    })
+
+    await newUser.save()
+
     res.status(200).json({ message: 'Registry is reset.' })
 })
 

@@ -3,22 +3,27 @@
 const express = require('express')
 const package_router = express.Router()
 
-// Here we are importing our ID generator
-const { v4: uuidv4 } = require('uuid')
-
 // Here we are importing the node-zip library to use for extracting data from zip files
 const JSZip = require('jszip')
+
+// Allow for requests through CORS
+package_router.use(function (req, res, next) {
+    res.header("Access-Control-Allow-Origin", "*");
+    res.header("Access-Control-Allow-Methods", "GET,HEAD,OPTIONS,POST,PUT,DELETE");
+    res.header("Access-Control-Allow-Headers", "Origin, X-Requested-With, Content-Type, Accept, Authorization");
+    next();
+});
 
 // Here we are importing the needed models for this endpoint
 // Models represent collections in the database. They define the structure of the documents in the collection and provide an 
 //      interface for querying, saving, updating, and deleting documents within the database error
 const PackageData = require('../models/packageData')
 const Package = require('../models/package')
-const PackageID = require('../models/packageID')
 const PackageRating = require('../models/packageRating')
-const PackageName = require('../models/packageName')
 const PackageRegEx = require('../models/packageRegEx')
 const PackageMetadata = require('../models/packageMetadata')
+const User = require('../models/user')
+const PackageHistoryEntry = require('../models/packageHistoryEntry')
 
 // Import child process library. Used for calling our rating script
 const util = require('node:util')
@@ -111,7 +116,7 @@ package_router.post('/', async (req,res) => {
                             data: newPackageDataSchema._id
                         })
 
-                        const newPackage = await newPackageSchema.save()
+                        let newPackage = await newPackageSchema.save()
 
                         // Create history entry for this upload
                         const defaultUser = await User.findOne({ name: "ece30861defaultadminuser" }).exec()
@@ -276,15 +281,15 @@ package_router.get('/:id', async(req,res) => {
 
     if(isValidObjectId(req.params.id)) {
         try {
-            curPackage = await Package.findById(req.params.id)
+            curPackageMetadata = await PackageMetadata.findById(req.params.id)
 
-            if(curPackage == null) {
+            if(curPackageMetadata == null) {
                 res.status(404).json({ message: "Package does not exist." })
                 doesExist = false
             }
             else {
+                curPackage = await Package.findOne({ metadata: curPackageMetadata._id })
                 curPackageData = await PackageData.findById(curPackage.data)
-                curPackageMetadata = await PackageMetadata.findById(curPackage.metadata)
             }
         } catch (err){
             res.status(500).json({ message: "Unknown error." })
@@ -366,13 +371,13 @@ package_router.put('/:id', async(req,res) => {
 
     if(isValidObjectId(req.params.id)) {
         try {
-            if((curPackage = await Package.findById({ _id: req.params.id })) == null) {
+            if((curPackageMetadata = await PackageMetadata.findById({ _id: req.params.id })) == null) {
                 res.status(404).json({ message: "Package does not exist." })
                 doesExist = false
             }
             else {
+                curPackage = await Package.findOne({ metadata: curPackageMetadata._id })
                 curPackageData = await PackageData.findById(curPackage.data)
-                curPackageMetadata = await PackageMetadata.findById(curPackage.metadata)
             }
         } catch {
             res.status(500).json({ message: "Unknown error." })
@@ -433,18 +438,18 @@ package_router.put('/:id', async(req,res) => {
 package_router.delete('/:id', async(req,res) => {
     let doesExist = true
     let curPackageData
-    let curPackageMetaData
+    let curPackageMetadata
     let curPackage 
 
     if(isValidObjectId(req.params.id)) {
         try {
-            if((curPackage = await Package.findById({ _id: req.params.id})) == null) {
+            if((curPackageMetadata = await PackageMetadata.findById({ _id: req.params.id })) == null) {
                 res.status(404).json({ message: "Package does not exist." })
                 doesExist = false
             }
             else {
+                curPackage = await Package.findOne({ metadata: curPackageMetadata._id })
                 curPackageData = await PackageData.findById(curPackage.data)
-                curPackageMetadata = await PackageMetadata.findById(curPackage.metadata)
             }
         } catch {
             res.status(500).json({ message: "Unknown error." })
@@ -487,29 +492,26 @@ package_router.delete('/:id', async(req,res) => {
 //          - 404: Package does not exist.
 //          - 500: The package rating system choked on at least one of the metrics.
 package_router.get('/:id/rate', async(req,res) => {
-    // This validates that the req.body conforms to the PackageID schema
-    const newPackageIDSchema = new PackageID(req.body)
+    // This validates that the req.body is a valid PackageID/ObjectID type
     let isValid = true
-    try {
-        await newPackageIDSchema.validate()
-    }
-    catch {
-        isValid = false    
-        // if the format of the input is not in PackageID, return a 400 code
-        res.status(400).json({ message: 'There is missing field(s) in the PackageID or it is formed improperly'})
-    }
-    if(isValid)
+    
+    if(isValidObjectId(req.params.id))
     {
-        // use find by id to find a Metadata schema with PackageID. 404 if it doesn't 
-        const curPackage = await Package.findById({ _id: req.params.id})
-        const curPackageData = await PackageData.findById( curPackage.data )    
-        // Need to be able to go from input: PackageID --> Metadata --> Package = output
-        if( curPackage == null )
+        // use find by id to find a Data schema with PackageID. 404 if it doesn't 
+        const curPackageMetadata = await PackageMetadata.findById({ _id: req.params.id})   
+        // Need to be able to go from input: PackageID --> Data --> URL --> Package = output
+        if( curPackageMetadata == null )
         {
             res.status(404).json({ message: 'Package does not exist' })
+            isValid = false
         }
-        // if it does exist, call the child to rate the module
-        else
+        else 
+        {
+            const curPackage = await Package.findOne({ metadata: curPackageMetadata._id })
+            const curPackageData = await PackageData.findById( curPackage.data ) 
+        }
+        
+        if(isValid)
         {
             // call the child process using the URL
             let rating_output = ""
@@ -541,6 +543,10 @@ package_router.get('/:id/rate', async(req,res) => {
                 res.status(500).json({ message: 'The package rating system choked on one of the metrics' })
             }
         }
+    }
+    else
+    {
+        res.status(400).json({ message: 'There is missing field(s) in the PackageID or it is formed improperly'})
     }
 })
 
