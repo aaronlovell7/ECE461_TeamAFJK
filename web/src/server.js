@@ -13,6 +13,33 @@ const db = mongoose.connection
 db.on('error', (error) => console.error(error))
 db.once('open', () => console.log('Connected to Database'))
 
+// Adding morgan package functionality
+const morgan = require('morgan');
+const fs = require('fs');
+const path = require('path');
+
+const accessLogStream = fs.createWriteStream('/var/log/apache2/morgantest.log', { flags: 'a' });
+
+morgan.token('request-body', (req, res) => {
+    const requestBody = req.body;
+    const maskedField = 'Content'; 
+    const maskedValue = '***';
+  
+    if (requestBody.hasOwnProperty(maskedField)) {
+      requestBody[maskedField] = maskedValue;
+    }
+  
+    return JSON.stringify(requestBody);
+  });
+
+morgan.token('response-body', (req, res) => { 
+    return JSON.stringify(res.json);
+});
+
+app.use(morgan(':method :url :status :res[content-length] - :response-time ms\n:date[iso]\n:request-body', {
+    stream: accessLogStream,
+}));
+
 app.use(express.json())
 
 // Here we define:
