@@ -601,8 +601,9 @@ package_router.get('/:id/rate', async(req,res) => {
                 }
 
                 res.status(200).json(newPackageRatingSchema)
-            } catch {
+            } catch (err) {
                 // return 500 status code if calling the rating CLI resulted in any error
+                console.error(err)
                 res.status(500).json({ message: 'The package rating system choked on one of the metrics' })
             }
         }
