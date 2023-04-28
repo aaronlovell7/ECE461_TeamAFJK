@@ -80,7 +80,12 @@
         </div>
         <div>
             <!-- Button for uploading zip file -->
-            <button id="uploadButton" type="submit">Upload File</button>
+            <form onsubmit="uploadPackage(); return false;">
+                <label for="JSProgram">Enter JSProgram:</label>
+                <input type="text" id="JSProgram" name="JSProgram">
+                <br>
+                <input type="submit" value="Upload File", id="uploadButton">
+              </form>
 
             <!-- Text box to enter URL and submit button -->
             <form onsubmit="ingestURL(); return false;">
@@ -95,17 +100,9 @@
             </button>
         </div>
         <script>
-
-            // Set up upload button that upon click gets sent to uploadPackage function
-            const uploadButton = document.getElementById('uploadButton');
-            uploadButton.addEventListener('click', () => {
-            uploadPackage()
-                .then(data => console.log(data))
-                .catch(error => console.error(error));
-            });
-
             // function that takes in a zip file, base 64 encodes the file, and sends a post request based on the contents of the file
-            async function uploadPackage() {              
+            async function uploadPackage() {      
+                var jsp = document.getElementById("JSProgram").value;       
                 const inputElement = document.createElement('input');
                 inputElement.type = 'file';
                 inputElement.accept = '.zip';
@@ -116,14 +113,14 @@
                     throw new Error('No file selected');
                 }
                 const base64 = await zipFileToBase64(file);
-                const response = await fetch(`http://localhost:3000/package`, {
+                const response = await fetch(`http://35.209.117.6:3000/package`, {
                     method: 'POST',
                     headers: {
                                 'Content-Type': 'application/json'
                             },
                     body:JSON.stringify( {
                             "Content": base64,
-                            "JSProgram": ""
+                            "JSProgram": jsp
                     })
                 });
                 if (!response.ok) {

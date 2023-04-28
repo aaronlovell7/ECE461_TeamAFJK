@@ -28,6 +28,10 @@ const PackageHistoryEntry = require('../models/packageHistoryEntry')
 // Import child process library. Used for calling our rating script
 const util = require('node:util')
 const execFile = util.promisify(require('node:child_process').execFile);
+const { spawn } = require('child_process')
+
+// For writing to file for JSProgram
+const fs = require('fs')
 
 // for Github REST API calls to extract info about modules
 const axios = require('axios')
@@ -105,7 +109,7 @@ package_router.post('/', async (req,res) => {
                             newPackageMetadataSchema.Name = newName
                         } 
                         else {
-                            newPackageMetadataSchema.Name = _id
+                            newPackageMetadataSchema.Name = newPackageMetadataSchema._id
                         }
 
                         await newPackageMetadataSchema.save()
@@ -118,17 +122,19 @@ package_router.post('/', async (req,res) => {
 
                         let newPackage = await newPackageSchema.save()
 
-                        // Create history entry for this upload
-                        const defaultUser = await User.findOne({ name: "ece30861defaultadminuser" }).exec()
+                        // Create history entry for this upload if its a sensitive module
+                        if(!!newPackageDataSchema.JSProgram) {
+                            const defaultUser = await User.findOne({ name: "ece30861defaultadminuser" }).exec()
 
-                        const newPackageHistoryEntry = new PackageHistoryEntry ({
-                            User: defaultUser._id,
-                            Date: Date.now(),
-                            PackageMetaData: newPackageMetadataSchema._id,
-                            Action: 'CREATE'
-                        })
+                            const newPackageHistoryEntry = new PackageHistoryEntry ({
+                                User: defaultUser._id,
+                                Date: Date.now(),
+                                PackageMetaData: newPackageMetadataSchema._id,
+                                Action: 'CREATE'
+                            })
 
-                        await newPackageHistoryEntry.save()
+                            await newPackageHistoryEntry.save()
+                        }
 
                         newPackage = await Package.findById(newPackage._id).populate('data').populate('metadata')
 
@@ -238,16 +244,18 @@ package_router.post('/', async (req,res) => {
                             let newPackage = await newPackageSchema.save()
 
                             // Create history entry for this upload
-                            const defaultUser = await User.findOne({ name: "ece30861defaultadminuser" }).exec()
-
-                            const newPackageHistoryEntry = new PackageHistoryEntry ({
-                                User: defaultUser._id,
-                                Date: Date.now(),
-                                PackageMetaData: newPackageMetadataSchema._id,
-                                Action: 'CREATE'
-                            })
-
-                            await newPackageHistoryEntry.save()
+                            if(!!newPackageDataSchema.JSProgram) {
+                                const defaultUser = await User.findOne({ name: "ece30861defaultadminuser" }).exec()
+    
+                                const newPackageHistoryEntry = new PackageHistoryEntry ({
+                                    User: defaultUser._id,
+                                    Date: Date.now(),
+                                    PackageMetaData: newPackageMetadataSchema._id,
+                                    Action: 'CREATE'
+                                })
+    
+                                await newPackageHistoryEntry.save()
+                            }
 
                             newPackage = await Package.findById(newPackage._id).populate('data').populate('metadata')
     
@@ -319,19 +327,58 @@ package_router.get('/:id', async(req,res) => {
                     "JSProgram": curPackageData.JSProgram
                 }        
 
-                // Create history entry for this upload
-                const defaultUser = await User.findOne({ name: "ece30861defaultadminuser" }).exec()
+                // If sensitive module, must run JSProgram to check if it can be downloaded
+                if(!!curPackageData.JSProgram) {
+                    // Create .js file for JSProgram
+                    fs.writeFile("download_test.js", curPackageData.JSProgram, (err) => {
+                        if(err) {
+                            console.error(err)
+                            res.status(500).json({ message: "Unknown error." })
+                            return
+                        }
+                    })
 
-                const newPackageHistoryEntry = new PackageHistoryEntry ({
-                    User: defaultUser._id,
-                    Date: Date.now(),
-                    PackageMetaData: curPackageMetadata._id,
-                    Action: 'DOWNLOAD'
-                })
+                    // Create child process
+                    // Spawn a new process and run the command
+                    async function callScript() {
+                        return new Promise ((resolve, reject) => {
+                            const args = ['download_test.js', curPackageMetadata.Name, curPackageMetadata.Version, "ece30861defaultadminuser", "ece30861defaultadminuser", "zip_file_path"]
+                            const child = spawn('node', args)
 
-                await newPackageHistoryEntry.save()
+                            child.on('exit', (code) => {
+                                if (code === 0) {
+                                    resolve(0)
+                                } else {
+                                    resolve(1)
+                                }
+                            });
+                        })
+                    }
 
-                res.status(200).json({ metadata: returnMetadata, data: returnData})
+                    const output = await callScript()
+
+                    if(output === 0) {
+                        // Create history entry for this download 
+                        const defaultUser = await User.findOne({ name: "ece30861defaultadminuser" }).exec()
+
+                        const newPackageHistoryEntry = new PackageHistoryEntry ({
+                            User: defaultUser._id,
+                            Date: Date.now(),
+                            PackageMetaData: curPackageMetadata._id,
+                            Action: 'DOWNLOAD'
+                        })
+
+                        await newPackageHistoryEntry.save()
+
+                        res.status(200).json({ metadata: returnMetadata, data: returnData})
+                    }
+                    else {
+                        res.status(424).json({ message: "Download of sensitive module rejected." })
+                    }
+                }
+                else {
+                    res.status(200).json({ metadata: returnMetadata, data: returnData})
+                }
             }
         }
     }
@@ -405,17 +452,19 @@ package_router.put('/:id', async(req,res) => {
                         { _id: curPackage.data }, 
                         { Content: newPackageDataSchema.Content })
 
-                    // Create history entry for this upload
-                    const defaultUser = await User.findOne({ name: "ece30861defaultadminuser" }).exec()
+                    // Create history entry for this update
+                    if(!!curPackageData.JSProgram) {
+                        const defaultUser = await User.findOne({ name: "ece30861defaultadminuser" }).exec()
 
-                    const newPackageHistoryEntry = new PackageHistoryEntry ({
-                        User: defaultUser._id,
-                        Date: Date.now(),
-                        PackageMetaData: curPackageMetadata._id,
-                        Action: 'UPDATE'
-                    })
+                        const newPackageHistoryEntry = new PackageHistoryEntry ({
+                            User: defaultUser._id,
+                            Date: Date.now(),
+                            PackageMetaData: curPackageMetadata._id,
+                            Action: 'UPDATE'
+                        })
 
-                    await newPackageHistoryEntry.save()
+                        await newPackageHistoryEntry.save()
+                    }
                     
                     res.status(200).json({ message: "Version is updated." })
                 }
@@ -537,6 +586,20 @@ package_router.get('/:id/rate', async(req,res) => {
 
                 await newPackageRatingSchema.save()
 
+                // Create history entry for this upload
+                if(!!curPackageData.JSProgram) {
+                    const defaultUser = await User.findOne({ name: "ece30861defaultadminuser" }).exec()
+
+                    const newPackageHistoryEntry = new PackageHistoryEntry ({
+                        User: defaultUser._id,
+                        Date: Date.now(),
+                        PackageMetaData: curPackageMetadata._id,
+                        Action: 'RATE'
+                    })
+
+                    await newPackageHistoryEntry.save()
+                }
+
                 res.status(200).json(newPackageRatingSchema)
             } catch {
                 // return 500 status code if calling the rating CLI resulted in any error
@@ -583,7 +646,7 @@ package_router.get('/byName/:name', async(req,res) => {
 
             // Create array of packages matching name
             try {
-                output_array = await PackageHistoryEntry.find({ PackageMetaData: md._id }).exec()
+                output_array = await PackageHistoryEntry.find({ PackageMetaData: md._id }).populate('User').populate('PackageMetaData').exec()
                 res.status(200).json(output_array)
             } catch {
                 res.status(500).json({ message: 'Unexpected error.' })
