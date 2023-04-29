@@ -123,7 +123,7 @@
                 var id = response1[0]._id
 
                 //Create another request using the ID found above
-                const response2 = await fetch('http://35.209.117.6:3000/package/' + id + '/rate', {           
+                let response2 = await fetch('http://35.209.117.6:3000/package/' + id + '/rate', {           
                     method: 'GET',
                     headers: {
                                 'Content-Type': 'application/json'
@@ -136,17 +136,13 @@
                     throw new Error(`Failed to upload package: ${error}`);
                 }
 
-                console.log("after second request")
-
                 // Utilize second response to get the package rating
                 response2 = await response2.text() 
                 response2 = JSON.parse(response2)
 
                 // Output the score to the box
-                console.log(response2)
                 const box = document.querySelector('.box1')
-                box.innerHTML = response2
-
+                box.textContent = JSON.stringify(response2)
             }
         </script>
     </body>
