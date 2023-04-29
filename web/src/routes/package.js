@@ -567,18 +567,20 @@ package_router.get('/:id/rate', async(req,res) => {
         // Need to be able to go from input: PackageID --> Data --> URL --> Package = output
         let curPackage
         let curPackageData
+        let url_elements
         if( curPackageMetadata == null )
         {
             res.status(404).json({ message: 'Package does not exist' })
             isValid = false
         }
-        else 
+        else
         {
             curPackage = await Package.findOne({ metadata: curPackageMetadata._id })
-            curPackageData = await PackageData.findById( curPackage.data ) 
+            curPackageData = await PackageData.findById( curPackage.data )
+            url_elements = newPackageDataSchema.URL.split('/') 
         }
-        
-        if(isValid)
+
+        if( isValid && (url_elements.includes('github.com') || url_elements.includes('www.npmjs.com')) )
         {
             // call the child process using the URL
             let rating_output = ""
@@ -624,6 +626,10 @@ package_router.get('/:id/rate', async(req,res) => {
                 console.error(err)
                 res.status(500).json({ message: 'The package rating system choked on one of the metrics' })
             }
+        }
+        else
+        {
+            res.status(400).json({ message: 'There is missing field(s) in the PackageID or it is formed improperly - invalid URL'})
         }
     }
     else
