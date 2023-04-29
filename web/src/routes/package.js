@@ -163,32 +163,34 @@ package_router.post('/', async (req,res) => {
                 url_elements = newPackageDataSchema.URL.split('/')
                 if( !(url_elements.includes('github.com') || url_elements.includes('www.npmjs.com')) )
                 {
-                    res.status(400).json({ message: 'There is missing fields in PackageData or the URL is formed improperly' })
+                    res.locals.data = { message: 'There is missing fields in PackageData or the URL is formed improperly.' }
+                    res.status(400).json(res.locals.data)
                 }
                 // check if a package with that URL already exists
                 else if(await PackageData.findOne({ URL: newPackageDataSchema.URL })) {
-                    res.status(409).json({ message: 'Package exists already.' })
+                    res.locals.data = { message: 'Package exists already.' }
+                    res.status(409).json(res.locals.data)
                 }
                 else{
                     // call the child process using the URL
-                    let rating_output = ""
-                    async function callRatingCLI()
-                    {
-                        const { stdout } = await execFile('./461_CLI/route_run', [newPackageDataSchema.URL]);
-                        rating_output = JSON.parse(stdout)
-                    }
-                    await callRatingCLI()
+                    // let rating_output = ""
+                    // async function callRatingCLI()
+                    // {
+                    //     const { stdout } = await execFile('./461_CLI/route_run', [newPackageDataSchema.URL]);
+                    //     rating_output = JSON.parse(stdout)
+                    // }
+                    // await callRatingCLI()
                     
-                    // check if all ratings are above 0.5
-                    if(rating_output['BUS_FACTOR_SCORE'] < 0.5 || rating_output['CORRECTNESS_SCORE'] < 0.5 
-                        || rating_output['CORRECTNESS_SCORE'] < 0.5 || rating_output['RAMP_UP_SCORE'] < 0.5 
-                        || rating_output['RESPONSIVE_MAINTAINER_SCORE'] < 0.5 || rating_output['LICENSE_SCORE'] < 0.5
-                        || rating_output['VERSION_SCORE'] < 0.5 || rating_output['CODE_REVIEWED_PERCENTAGE'] < 0.5 )
-                    {
-                        res.status(424).json({ message: "Package not uploaded due to disqualified rating" })
-                    }
-                    else
-                    {
+                    // // check if all ratings are above 0.5
+                    // if(rating_output['BUS_FACTOR_SCORE'] < 0.5 || rating_output['CORRECTNESS_SCORE'] < 0.5 
+                    //     || rating_output['CORRECTNESS_SCORE'] < 0.5 || rating_output['RAMP_UP_SCORE'] < 0.5 
+                    //     || rating_output['RESPONSIVE_MAINTAINER_SCORE'] < 0.5 || rating_output['LICENSE_SCORE'] < 0.5
+                    //     || rating_output['VERSION_SCORE'] < 0.5 || rating_output['CODE_REVIEWED_PERCENTAGE'] < 0.5 )
+                    // {
+                    //     res.status(424).json({ message: "Package not uploaded due to disqualified rating" })
+                    // }
+                    // else
+                    // {
                         // setting owner/repo args for calls to API
                         let owner;
                         let repo;
@@ -229,7 +231,8 @@ package_router.post('/', async (req,res) => {
                         catch {
                             // Per piazza post 196
                             zipError = true;
-                            res.status(400).json({ message: 'No package.json in module.'})
+                            res.locals.data = { message: 'No package.json in module.' }
+                            res.status(400).json(res.locals.data)
                         }
 
                         if(!zipError) {
@@ -277,12 +280,13 @@ package_router.post('/', async (req,res) => {
     
                             res.status(201).json(newPackage)
                         }
-                    }
+                    // }
                 }
             }
         }
         else {
-            res.status(400).json({ message: 'There is missing field(s) in the PackageData/AuthenticationToken or it is formed improperly, or the AuthenticationToken is invalid.' })
+            res.locals.data = { message: 'There is missing field(s) in the PackageData/AuthenticationToken or it is formed improperly, or the AuthenticationToken is invalid.' }
+            res.status(400).json(res.locals.data)
         }
     }
 })
@@ -301,14 +305,15 @@ package_router.get('/:id', async(req,res) => {
     let doesExist = true
     let curPackageData
     let curPackageMetadata
-    let curPackage 
+    let curPackage
 
     if(isValidObjectId(req.params.id)) {
         try {
             curPackageMetadata = await PackageMetadata.findById(req.params.id)
 
             if(curPackageMetadata == null) {
-                res.status(404).json({ message: "Package does not exist." })
+                res.locals.data = { message: "Package does not exist." }
+                res.status(404).json(res.locals.data)
                 doesExist = false
             }
             else {
@@ -316,7 +321,8 @@ package_router.get('/:id', async(req,res) => {
                 curPackageData = await PackageData.findById(curPackage.data)
             }
         } catch (err){
-            res.status(500).json({ message: "Unknown error." })
+            res.locals.data = { message: "Unknown error in finding packages." }
+            res.status(500).json(res.locals.data)
             doesExist = false
         }
 
@@ -327,7 +333,8 @@ package_router.get('/:id', async(req,res) => {
             }
             catch (err) {
                 isValid = false
-                res.status(400).json({ message: "There is missing field(s) in the PackageID or it is formed improperly." })
+                res.locals.data = { message: "in does exist. There is missing field(s) in the PackageID or it is formed improperly." }
+                res.status(400).json( res.locals.data)
             }
 
             if (isValid) {
@@ -349,7 +356,8 @@ package_router.get('/:id', async(req,res) => {
                     fs.writeFile("download_test.js", curPackageData.JSProgram, (err) => {
                         if(err) {
                             console.error(err)
-                            res.status(500).json({ message: "Unknown error." })
+                            res.locals.data = { message: "Unknown error in writing JSProgram." }
+                            res.status(500).json(res.locals.data)
                             return
                         }
                     })
@@ -389,7 +397,8 @@ package_router.get('/:id', async(req,res) => {
                         res.status(200).json({ metadata: returnMetadata, data: returnData})
                     }
                     else {
-                        res.status(424).json({ message: "Download of sensitive module rejected." })
+                        res.locals.data = { message: "Download of sensitive module rejected." }
+                        res.status(424).json( res.locals.data)
                     }
                 }
                 else {
@@ -399,7 +408,8 @@ package_router.get('/:id', async(req,res) => {
         }
     }
     else {
-        res.status(400).json({ message: 'There is missing field(s) in the PackageID or it is formed improperly.' })
+        res.locals.data = { message: 'There is missing field(s) in the PackageID or it is formed improperly.' }
+        res.status(400).json(res.locals.data)
     }
 })
 
@@ -435,7 +445,8 @@ package_router.put('/:id', async(req,res) => {
     if(isValidObjectId(req.params.id)) {
         try {
             if((curPackageMetadata = await PackageMetadata.findById({ _id: req.params.id })) == null) {
-                res.status(404).json({ message: "Package does not exist." })
+                res.locals.data = { message: "Package does not exist." }
+                res.status(404).json(res.locals.data)
                 doesExist = false
             }
             else {
@@ -443,7 +454,8 @@ package_router.put('/:id', async(req,res) => {
                 curPackageData = await PackageData.findById(curPackage.data)
             }
         } catch {
-            res.status(500).json({ message: "Unknown error." })
+            res.locals.data = { message: "Unknown error." }
+            res.status(500).json(res.locals.data)
             doesExist = false
         }
 
@@ -455,7 +467,8 @@ package_router.put('/:id', async(req,res) => {
             }
             catch {
                 isValid = false;
-                res.status(400).json({ message: "There is missing field(s) in the PackageID/AuthenticationToken or it is formed improperly, or the AuthenticationToken is invalid." })
+                res.locals.data = { message: "in does exist. There is missing field(s) in the PackageID/AuthenticationToken or it is formed improperly, or the AuthenticationToken is invalid." }
+                res.status(400).json(res.locals.data)
             }
 
             if(isValid) {
@@ -488,7 +501,8 @@ package_router.put('/:id', async(req,res) => {
         }
     }
     else {
-        res.status(400).json({ message: "There is missing field(s) in the PackageID/AuthenticationToken or it is formed improperly, or the AuthenticationToken is invalid." })
+        res.locals.data = { message: "There is missing field(s) in the PackageID/AuthenticationToken or it is formed improperly, or the AuthenticationToken is invalid." }
+        res.status(400).json( res.locals.data)
     }
 })
 
@@ -509,7 +523,8 @@ package_router.delete('/:id', async(req,res) => {
     if(isValidObjectId(req.params.id)) {
         try {
             if((curPackageMetadata = await PackageMetadata.findById({ _id: req.params.id })) == null) {
-                res.status(404).json({ message: "Package does not exist." })
+                res.locals.data = { message: "Package does not exist." }
+                res.status(404).json(res.locals.data)
                 doesExist = false
             }
             else {
@@ -517,7 +532,8 @@ package_router.delete('/:id', async(req,res) => {
                 curPackageData = await PackageData.findById(curPackage.data)
             }
         } catch {
-            res.status(500).json({ message: "Unknown error." })
+            res.locals.data = { message: "Unknown error." }
+            res.status(500).json(res.locals.data)
             doesExist = false
         }
 
@@ -528,7 +544,8 @@ package_router.delete('/:id', async(req,res) => {
             }
             catch (err) {
                 isValid = false
-                res.status(400).json({ message: "There is missing field(s) in the PackageID/AuthenticationToken or it is formed improperly, or the AuthenticationToken is invalid." })
+                res.locals.data = { message: " in does exists. There is missing field(s) in the PackageID/AuthenticationToken or it is formed improperly, or the AuthenticationToken is invalid." }
+                res.status(400).json(res.locals.data)
             }
             if (isValid) {
                 await Promise.all([
@@ -542,7 +559,8 @@ package_router.delete('/:id', async(req,res) => {
         }
     }
     else {
-        res.status(400).json({ message: "There is missing field(s) in the PackageID/AuthenticationToken or it is formed improperly, or the AuthenticationToken is invalid." })
+        res.locals.data = { message: "There is missing field(s) in the PackageID/AuthenticationToken or it is formed improperly, or the AuthenticationToken is invalid." }
+        res.status(400).json(res.locals.data)
     }
 })
 
@@ -569,7 +587,8 @@ package_router.get('/:id/rate', async(req,res) => {
         let curPackageData
         if( curPackageMetadata == null )
         {
-            res.status(404).json({ message: 'Package does not exist' })
+            res.locals.data = { message: 'Package does not exist' }
+            res.status(404).json( res.locals.data)
             isValid = false
         }
         else 
@@ -622,13 +641,15 @@ package_router.get('/:id/rate', async(req,res) => {
             } catch (err) {
                 // return 500 status code if calling the rating CLI resulted in any error
                 console.error(err)
-                res.status(500).json({ message: 'The package rating system choked on one of the metrics' })
+                res.locals.data = { message: 'The package rating system choked on one of the metrics' }
+                res.status(500).json(res.locals.data)
             }
         }
     }
     else
     {
-        res.status(400).json({ message: 'There is missing field(s) in the PackageID or it is formed improperly'})
+        res.locals.data = { message: 'There is missing field(s) in the PackageID or it is formed improperly'}
+        res.status(400).json(res.locals.data)
     }
 })
 
@@ -648,7 +669,8 @@ package_router.get('/byName/:name', async(req,res) => {
 
     // Check package exists
     if(!(md = await PackageMetadata.findOne({ Name: req.params.name }))) {
-        res.status(404).json({ message: 'No such package.' })
+        res.locals.data = { message: 'No such package.' }
+        res.status(404).json(res.locals.data)
     }
     else {
         let isValid = true
@@ -658,7 +680,8 @@ package_router.get('/byName/:name', async(req,res) => {
             await md.validate()
         } catch {
             isValid = false
-            res.status(400).json({ message: 'There is missing field(s) in the PackageName or it is formed improperly.' })
+            res.locals.data = { message: 'There is missing field(s) in the PackageName or it is formed improperly.' }
+            res.status(400).json(res.locals.data)
         }
         if (isValid){
             let output_array = []
@@ -668,7 +691,8 @@ package_router.get('/byName/:name', async(req,res) => {
                 output_array = await PackageHistoryEntry.find({ PackageMetaData: md._id }).populate('User').populate('PackageMetaData').exec()
                 res.status(200).json(output_array)
             } catch {
-                res.status(500).json({ message: 'Unexpected error.' })
+                res.locals.data = { message: 'Unexpected error.' }
+                res.status(500).json(res.locals.data)
             }
         }
     }
@@ -687,7 +711,8 @@ package_router.delete('/byName/:name', async(req,res) => {
 
     // Find package 
     if(!(md = await PackageMetadata.findOne({ Name: req.params.name }))) {
-        res.status(404).json({ message: 'No such package.' })
+        res.locals.data = { message: 'No such package.' }
+        res.status(404).json(res.locals.data)
     }
     else {
         let isValid = true
@@ -697,7 +722,8 @@ package_router.delete('/byName/:name', async(req,res) => {
             await md.validate()
         } catch {
             isValid = false
-            res.status(400).json({ message: 'There is missing field(s) in the Name or it is formed improperly.' })
+            res.locals.data = { message: 'There is missing field(s) in the PackageName or it is formed improperly.' }
+            res.status(400).json(res.locals.data)
         }
         if (isValid){
             // Find Package and PackageData documents
@@ -750,12 +776,14 @@ package_router.post('/byRegEx', async(req,res) => {
     try {
         output_array = await PackageMetadata.find({ Name: { $regex: newPackageRegEx.PackageRegEx } }).exec()
     } catch {
-        res.status(500).json({ message: 'Unknown error.' })
+        res.locals.data = { message: 'Unknown error.' }
+        res.status(500).json(res.locals.data)
     }
 
     // Check if nothing was found
     if(output_array.length == 0) {
-        res.status(404).json({ message: 'No package found under this regex.' })
+        res.locals.data = { message: 'No package found under this regex.' }
+        res.status(404).json(res.locals.data)
     }
     else {
         res.status(200).json(output_array)
