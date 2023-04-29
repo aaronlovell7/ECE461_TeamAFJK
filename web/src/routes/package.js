@@ -55,7 +55,8 @@ package_router.post('/', async (req,res) => {
     }
     catch {
         isValid = false
-        res.status(400).json({ message: 'There is missing field(s) in the PackageData/AuthenticationToken or it is formed improperly, or the AuthenticationToken is invalid.'})
+        res.locals.data = {message: 'There is missing field(s) in the PackageData/AuthenticationToken or it is formed improperly, or the AuthenticationToken is invalid.'}
+        res.status(400).json(res.locals.data)
     }
 
     if(isValid) {
@@ -64,7 +65,8 @@ package_router.post('/', async (req,res) => {
             if(newPackageDataSchema.Content) { // zip file upload
                 // Check if package exists already
                 if(await PackageData.findOne({ Content: newPackageDataSchema.Content })) {
-                    res.status(409).json({ message: 'Package exists already.' })
+                    res.locals.data = { message: 'Package exists already.' }
+                    res.status(409).json(res.locals.data)
                 }
                 else {
                     // Get name and version from package.json
@@ -74,11 +76,24 @@ package_router.post('/', async (req,res) => {
                     let newURL
                     let zipError = false
                     let isName = true
+                    let packageJSON
                     try {
                         // Decode content, extract package.json, then extract name and version from it
                         const decodedContent = Buffer.from(base64Content, 'base64')
                         const zip = await JSZip.loadAsync(decodedContent)
-                        const packageJSON = await zip.file('package.json').async('string')
+
+                        // Look through all directories and files for a package.json
+                        async function findPackageJSON(zip) {
+                            zip.forEach((relativePath, zipEntry) => {
+                                if (zipEntry.name.includes('package.json')) {
+                                  packageJSON = zipEntry.async('string');
+                                  return false // breaks when it finds it
+                                }
+                              });
+                              return packageJSON
+                        }
+                        packageJSON = await findPackageJSON(zip)
+                        
                         newName = JSON.parse(packageJSON).name
                         if(!newName) isName = false
                         newVersion = JSON.parse(packageJSON).version
@@ -88,7 +103,8 @@ package_router.post('/', async (req,res) => {
                     catch {
                         // Per piazza post 196
                         zipError = true;
-                        res.status(400).json({ message: 'No package.json in module.'})
+                        res.locals.data = { message: 'No package.json in module.' }
+                        res.status(400).json(res.locals.data)
                     }
 
                     if(!zipError) {
