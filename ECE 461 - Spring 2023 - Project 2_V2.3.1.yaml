@@ -11,18 +11,18 @@ info:
       url: http://davisjam.github.io
       email: davisjam@purdue.edu
     Students:
-      name: Aaron Lovell
-      url: https://www.linkedin.com/in/heath-aaron-lovell/
-      email: aaronlovellmu42@gmail.com
-      name: Fred Kepler
-      url: https://www.linkedin.com/in/frederick-j-kepler-iv/
-      email: fredkepler12@gmail.com
-      name: Jack Stravrakos
-      url: https://www.linkedin.com/in/jackstavrakos/
-      email: jack.stavrakos@gmail.com
-      name: Kevin Hasier
-      url: https://www.linkedin.com/in/kevin-hasier/
-      email: kevhas1227@gmail.com
+      aaron_name: Aaron Lovell
+      aaron_url: https://www.linkedin.com/in/heath-aaron-lovell/
+      aaron_email: aaronlovellmu42@gmail.com
+      fred_name: Fred Kepler
+      fred_url: https://www.linkedin.com/in/frederick-j-kepler-iv/
+      fred_email: fredkepler12@gmail.com
+      jack_name: Jack Stravrakos
+      jack_url: https://www.linkedin.com/in/jackstavrakos/
+      jack_email: jack.stavrakos@gmail.com
+      kevin_name: Kevin Hasier
+      kevin_url: https://www.linkedin.com/in/kevin-hasier/
+      kevin_email: kevhas1227@gmail.com
   license:
     name: Apache 2.0
     url: https://www.apache.org/licenses/LICENSE-2.0.html
@@ -214,15 +214,6 @@ paths:
         $ref: '#/components/schemas/PackageID'
       in: path
       required: true
-    - examples:
-        ExampleToken:
-          value: bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyfQ.SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c
-      name: X-Authorization
-      description: ""
-      schema:
-        $ref: '#/components/schemas/AuthenticationToken'
-      in: header
-      required: true
   /package:
     post:
       requestBody:
@@ -322,35 +313,7 @@ paths:
 
       Otherwise, this endpoint should return HTTP 501 "Not implemented", and the "X-Authorization" header should be unused for the other endpoints.
     put:
-      requestBody:
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/AuthenticationRequest'
-            examples:
-              ExampleRequest:
-                value:
-                  User:
-                    name: ece30861defaultadminuser
-                    isAdmin: true
-                  Secret:
-                    password: correcthorsebatterystaple123(!__+@**(A'"`;DROP TABLE packages;
-        required: true
       responses:
-        "200":
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/AuthenticationToken'
-              examples:
-                ExampleResponse:
-                  value: '"bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyfQ.SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c"'
-          description: Return an AuthenticationToken.
-        "400":
-          description: There is missing field(s) in the AuthenticationRequest or it
-            is formed improperly.
-        "401":
-          description: The user or password is invalid.
         "501":
           description: This system does not support authentication.
       operationId: CreateAuthToken
@@ -504,7 +467,7 @@ components:
       type: object
       properties:
         Name:
-          $ref: '#/components/schemas/PackageName'
+          type: string
           description: Package name
           example: my-package
         Version:
