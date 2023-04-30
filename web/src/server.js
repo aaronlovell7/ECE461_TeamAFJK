@@ -26,7 +26,9 @@ morgan.token('request-body', (req, res) => {
     const maskedValue = '***';
   
     if (requestBody.hasOwnProperty(maskedField)) {
-      requestBody[maskedField] = maskedValue;
+        if(requestBody.Content != null) {
+            requestBody[maskedField] = maskedValue;
+        }
     }
     else if(requestBody.hasOwnProperty('data')) {
         if(requestBody.data.Content != null) {
@@ -38,10 +40,10 @@ morgan.token('request-body', (req, res) => {
   });
 
 morgan.token('response-body', (req, res) => { 
-    return JSON.stringify(res.json);
+    return JSON.stringify(res.locals.data);
 });
 
-app.use(morgan(':method :url :status :res[content-length] - :response-time ms\n:date[iso]\n:request-body', {
+app.use(morgan(':method :url :status :res[content-length] - :response-time ms\n:date[iso]\n:request-body\n:response-body', {
     stream: accessLogStream,
 }));
 

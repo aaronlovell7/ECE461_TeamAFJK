@@ -781,29 +781,39 @@ package_router.post('/byRegEx', async(req,res) => {
     // Load reg ex into schema
     const newPackageRegEx = await new PackageRegEx(req.body)
 
+    let isValid = true
+
     // Validate
     try {
         await newPackageRegEx.validate()
     } catch {
-        res.status(400).json({ message: 'There is missing field(s) in the PackageRegEx or it is formed improperly.' })
+        isValid = false
+        res.locals.data = { message: 'There is missing field(s) in the PackageRegEx or it is formed improperly.' }
+        res.status(400).json(res.locals.data)
     }
 
     // Search by reg ex
-    let output_array = []
-    try {
-        output_array = await PackageMetadata.find({ Name: { $regex: newPackageRegEx.PackageRegEx } }).exec()
-    } catch {
-        res.locals.data = { message: 'Unknown error.' }
-        res.status(500).json(res.locals.data)
-    }
+    if(isValid) {
+        let error_500 = false
+        let output_array = []
+        try {
+            output_array = await PackageMetadata.find({ Name: { $regex: newPackageRegEx.RegEx } }).exec()
+        } catch {
+            error_500 = true
+            res.locals.data = { message: 'Unknown error.' }
+            res.status(500).json(res.locals.data)
+        }
 
-    // Check if nothing was found
-    if(output_array.length == 0) {
-        res.locals.data = { message: 'No package found under this regex.' }
-        res.status(404).json(res.locals.data)
-    }
-    else {
-        res.status(200).json(output_array)
+        if(!error_500) {
+            // Check if nothing was found
+            if(output_array.length == 0) {
+                res.locals.data = { message: 'No package found under this regex.' }
+                res.status(404).json(res.locals.data)
+            }
+            else {
+                res.status(200).json(output_array)
+            }
+        }
     }
 })
 
