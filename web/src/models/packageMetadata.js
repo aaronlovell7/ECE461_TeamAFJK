@@ -12,6 +12,12 @@ const packageMetadataSchema = new mongoose.Schema({
         type: String,
         example: '1.2.3',
         required: true
+    },
+    ID: {
+        description: "Unique ID for use with the /package/{id} endpoint.",
+        type: String,
+        example: "123567192081501",
+        required: true
     }
 })
 

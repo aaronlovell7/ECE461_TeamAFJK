@@ -1,5 +1,0 @@
-{"metrics": "RAMP_UP_SCORE", "api": "graphql", "filepath": "src/metrics_calc.py", "line": 73}
-{"metrics": "CORRECTNESS_SCORE", "api": "graphql", "filepath": "src/metrics_calc.py", "line": 82}
-{"metrics": "BUS_FACTOR_SCORE", "api": "rest", "filepath": "src/metrics_calc.py", "line": 91}
-{"metrics": "LICENSE_SCORE", "api": "rest", "filepath": "src/metrics_calc.py", "line": 132}
-{"metrics": "MAINTENANCE_SCORE", "api": "rest", "filepath": "src/metrics_calc.py", "line": 124}
