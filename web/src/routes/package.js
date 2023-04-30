@@ -607,7 +607,7 @@ package_router.get('/:id/rate', async(req,res) => {
         {
             curPackage = await Package.findOne({ metadata: curPackageMetadata._id })
             curPackageData = await PackageData.findById( curPackage.data )
-            url_elements = newPackageDataSchema.URL.split('/') 
+            url_elements = curPackageData.URL.split('/') 
         }
 
         if( isValid && (url_elements.includes('github.com') || url_elements.includes('www.npmjs.com')) )
