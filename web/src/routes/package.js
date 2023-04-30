@@ -116,6 +116,7 @@ package_router.post('/', async (req,res) => {
                         const newPackageMetadataSchema = new PackageMetadata ({
                             Name: "default",
                             Version: newVersion,
+                            ID: "default"
                         })
 
                         await newPackageMetadataSchema.save()
@@ -127,6 +128,8 @@ package_router.post('/', async (req,res) => {
                         else {
                             newPackageMetadataSchema.Name = newPackageMetadataSchema._id
                         }
+
+                        newPackageMetadataSchema.ID = newPackageMetadataSchema._id
 
                         await newPackageMetadataSchema.save()
 
@@ -173,24 +176,24 @@ package_router.post('/', async (req,res) => {
                 }
                 else{
                     // call the child process using the URL
-                    // let rating_output = ""
-                    // async function callRatingCLI()
-                    // {
-                    //     const { stdout } = await execFile('./461_CLI/route_run', [newPackageDataSchema.URL]);
-                    //     rating_output = JSON.parse(stdout)
-                    // }
-                    // await callRatingCLI()
+                    let rating_output = ""
+                    async function callRatingCLI()
+                    {
+                        const { stdout } = await execFile('./461_CLI/route_run', [newPackageDataSchema.URL]);
+                        rating_output = JSON.parse(stdout)
+                    }
+                    await callRatingCLI()
                     
-                    // // check if all ratings are above 0.5
-                    // if(rating_output['BUS_FACTOR_SCORE'] < 0.5 || rating_output['CORRECTNESS_SCORE'] < 0.5 
-                    //     || rating_output['CORRECTNESS_SCORE'] < 0.5 || rating_output['RAMP_UP_SCORE'] < 0.5 
-                    //     || rating_output['RESPONSIVE_MAINTAINER_SCORE'] < 0.5 || rating_output['LICENSE_SCORE'] < 0.5
-                    //     || rating_output['VERSION_SCORE'] < 0.5 || rating_output['CODE_REVIEWED_PERCENTAGE'] < 0.5 )
-                    // {
-                    //     res.status(424).json({ message: "Package not uploaded due to disqualified rating" })
-                    // }
-                    // else
-                    // {
+                    // check if all ratings are above 0.5
+                    if(rating_output['BUS_FACTOR_SCORE'] < 0.5 || rating_output['CORRECTNESS_SCORE'] < 0.5 
+                        || rating_output['CORRECTNESS_SCORE'] < 0.5 || rating_output['RAMP_UP_SCORE'] < 0.5 
+                        || rating_output['RESPONSIVE_MAINTAINER_SCORE'] < 0.5 || rating_output['LICENSE_SCORE'] < 0.5
+                        || rating_output['VERSION_SCORE'] < 0.5 || rating_output['CODE_REVIEWED_PERCENTAGE'] < 0.5 )
+                    {
+                        res.status(424).json({ message: "Package not uploaded due to disqualified rating" })
+                    }
+                    else
+                    {
                         // setting owner/repo args for calls to API
                         let owner;
                         let repo;
@@ -250,8 +253,13 @@ package_router.post('/', async (req,res) => {
                             const newPackageMetadataSchema = new PackageMetadata ({
                                 Name: newName,
                                 Version: newVersion,
+                                ID: "default"
                             })
 
+                            await newPackageMetadataSchema.save()
+
+                            newPackageMetadataSchema.ID = newPackageMetadataSchema._id
+                            
                             await newPackageMetadataSchema.save()
     
                             // Create package schema
@@ -280,7 +288,7 @@ package_router.post('/', async (req,res) => {
     
                             res.status(201).json(newPackage)
                         }
-                    // }
+                    }
                 }
             }
         }
@@ -352,8 +360,11 @@ package_router.get('/:id', async(req,res) => {
 
                 // If sensitive module, must run JSProgram to check if it can be downloaded
                 if(!!curPackageData.JSProgram) {
+                    // Replace \\n with \n for writing
+                    const jsModifiedCode = curPackageData.JSProgram.replace(/\\n/g, '\n')
+
                     // Create .js file for JSProgram
-                    fs.writeFile("download_test.js", curPackageData.JSProgram, (err) => {
+                    fs.writeFile("download_test.js", jsModifiedCode, (err) => {
                         if(err) {
                             console.error(err)
                             res.locals.data = { message: "Unknown error in writing JSProgram." }
@@ -408,8 +419,8 @@ package_router.get('/:id', async(req,res) => {
         }
     }
     else {
-        res.locals.data = { message: 'There is missing field(s) in the PackageID or it is formed improperly.' }
-        res.status(400).json(res.locals.data)
+        res.locals.data = { message: "Package does not exist." }
+        res.status(404).json(res.locals.data)
     }
 })
 
@@ -501,8 +512,8 @@ package_router.put('/:id', async(req,res) => {
         }
     }
     else {
-        res.locals.data = { message: "There is missing field(s) in the PackageID/AuthenticationToken or it is formed improperly, or the AuthenticationToken is invalid." }
-        res.status(400).json( res.locals.data)
+        res.locals.data = { message: "Package does not exist." }
+        res.status(404).json(res.locals.data)
     }
 })
 
@@ -559,8 +570,8 @@ package_router.delete('/:id', async(req,res) => {
         }
     }
     else {
-        res.locals.data = { message: "There is missing field(s) in the PackageID/AuthenticationToken or it is formed improperly, or the AuthenticationToken is invalid." }
-        res.status(400).json(res.locals.data)
+        res.locals.data = { message: "Package does not exist." }
+        res.status(404).json(res.locals.data)
     }
 })
 
@@ -654,8 +665,8 @@ package_router.get('/:id/rate', async(req,res) => {
     }
     else
     {
-        res.locals.data = { message: 'There is missing field(s) in the PackageID or it is formed improperly'}
-        res.status(400).json(res.locals.data)
+        res.locals.data = { message: "Package does not exist." }
+        res.status(404).json(res.locals.data)
     }
 })
 

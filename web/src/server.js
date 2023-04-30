@@ -28,6 +28,11 @@ morgan.token('request-body', (req, res) => {
     if (requestBody.hasOwnProperty(maskedField)) {
       requestBody[maskedField] = maskedValue;
     }
+    else if(requestBody.hasOwnProperty('data')) {
+        if(requestBody.data.Content != null) {
+            requestBody.data[maskedField] = maskedValue;
+        }
+    }
   
     return JSON.stringify(requestBody);
   });
@@ -56,13 +61,6 @@ app.use('/packages', packagesRouter)
 
 const resetRouter = require('./routes/reset')
 app.use('/reset', resetRouter)
-
-// app.use(function (req, res, next) {
-//     res.header("Access-Control-Allow-Origin", "*");
-//     res.header("Access-Control-Allow-Methods", "GET,HEAD,OPTIONS,POST,PUT,DELETE");
-//     res.header("Access-Control-Allow-Headers", "Origin, X-Requested-With, Content-Type, Accept, Authorization, offset");
-//     next();
-// });
 
 // Create default user
 const User = require('./models/user')
